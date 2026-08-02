@@ -3,3 +3,12 @@ data/
 npm-debug.log*
 .DS_Store
 .env
+
+# Freebuff (arquivos internos do app — não pertencem ao projeto)
+.freebuff/
+
+# Logs
+server.log
+
+# Conteúdo enviado pelos administradores (videoaulas podem ser grandes)
+public/uploads/

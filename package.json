@@ -1,0 +1,18 @@
+{
+  "name": "construindo-saberes",
+  "version": "1.0.0",
+  "description": "Plataforma de Ensino de Espanhol - Construindo Saberes (Node.js + MySQL + Glassmorphism UI)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^2.2.0",
+    "mysql2": "^3.11.0"
+  }
+}

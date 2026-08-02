@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Administrativo — Construindo Saberes</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+  <meta name="theme-color" content="#8b5cf6">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/theme.js"></script>
+  <script>(async () => { try { await window.loadTheme(); } catch (e) {} })();</script>
+</head>
+<body>
+  <div class="bg-scene"></div>
+  <div class="bg-grid"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="logo" onclick="go('visao')">
+        <div class="logo-mark">🛡️</div>
+        <div class="logo-text">Construindo Saberes<small>Admin</small></div>
+      </div>
+
+      <nav class="side-nav">
+        <div class="nav-group-label">Gestão</div>
+        <button class="nav-item active" data-view="visao" onclick="go('visao')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 15 4-6 4 3 5-7"/></svg>
+          Visão Geral
+        </button>
+        <button class="nav-item" data-view="usuarios" onclick="go('usuarios')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Usuários
+          <span class="nav-badge" id="navUsers">0</span>
+        </button>
+        <button class="nav-item" data-view="whitelist" onclick="go('whitelist')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+          Whitelist Admin
+          <span class="nav-badge" id="navWhite">0</span>
+        </button>
+
+        <div class="nav-group-label">Conteúdo</div>
+        <button class="nav-item" data-view="videos" onclick="go('videos')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+          Videoaulas
+          <span class="nav-badge" id="navVideos">0</span>
+        </button>
+        <button class="nav-item" data-view="simulados" onclick="go('simulados')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Simulados
+          <span class="nav-badge" id="navEx">0</span>
+        </button>
+
+        <div class="nav-group-label">Personalização</div>
+        <button class="nav-item" data-view="tema" onclick="go('tema')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+          Cores do Site
+          <span class="nav-badge" style="background:var(--grad)">AO VIVO</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="user-card">
+          <div id="sidebarAvatar"></div>
+          <div style="min-width:0">
+            <div class="u-name" id="sidebarName">—</div>
+            <div class="u-role">🛡️ Administrador</div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm btn-block" onclick="go('perfilAdmin')">⚙️ Meu perfil</button>
+        <button class="btn btn-ghost btn-sm btn-block" onclick="doLogout()">Sair</button>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="app-main">
+      <header class="topbar">
+        <button class="btn btn-icon menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+        <div>
+          <h1 id="pageTitle">Visão Geral</h1>
+          <div class="breadcrumb" id="pageBreadcrumb">Painel administrativo</div>
+        </div>
+        <div class="topbar-right">
+          <span class="tag success">● Sistema online</span>
+          <div id="topAvatar"></div>
+        </div>
+      </header>
+
+      <div class="content">
+
+        <!-- ══ VISÃO GERAL ══ -->
+        <section class="view active" id="view-visao">
+          <div class="welcome-band glass">
+            <div id="welcomeAvatar"></div>
+            <div>
+              <h2>Bem-vindo(a), <span id="welcomeName">admin</span>! 🛡️</h2>
+              <p>Aqui está o resumo da plataforma em tempo real.</p>
+            </div>
+          </div>
+          <div class="stat-grid">
+            <div class="glass stat-card"><div class="sc-icon">🎓</div><div class="sc-value" id="stUsers">0</div><div class="sc-label">Alunos cadastrados</div></div>
+            <div class="glass stat-card"><div class="sc-icon">🎬</div><div class="sc-value" id="stVideos">0</div><div class="sc-label">Videoaulas</div></div>
+            <div class="glass stat-card"><div class="sc-icon">📝</div><div class="sc-value" id="stExercises">0</div><div class="sc-label">Simulados</div></div>
+            <div class="glass stat-card"><div class="sc-icon">💬</div><div class="sc-value" id="stMessages">0</div><div class="sc-label">Mensagens no chat</div></div>
+          </div>
+          <div class="section-grid">
+            <div class="glass card">
+              <div class="card-title">👥 Últimos alunos cadastrados</div>
+              <div class="card-sub">Atividade recente na plataforma</div>
+              <div class="table-wrap">
+                <table class="data" id="recentUsersTable"></table>
+              </div>
+            </div>
+            <div class="glass card">
+              <div class="card-title">⚡ Ações rápidas</div>
+              <div class="card-sub">Atalhos de gestão</div>
+              <div class="lesson-list" style="gap:9px">
+                <div class="lesson-item" onclick="go('videos')" style="padding:13px 16px;cursor:pointer"><div class="l-thumb" style="width:52px;height:52px;border-radius:14px;font-size:24px">🎬</div><div><b>Adicionar videoaula</b><span>Publique novo conteúdo</span></div></div>
+                <div class="lesson-item" onclick="go('simulados')" style="padding:13px 16px;cursor:pointer"><div class="l-thumb" style="width:52px;height:52px;border-radius:14px;font-size:24px">📝</div><div><b>Criar simulado</b><span>Monte questões com correção</span></div></div>
+                <div class="lesson-item" onclick="go('whitelist')" style="padding:13px 16px;cursor:pointer"><div class="l-thumb" style="width:52px;height:52px;border-radius:14px;font-size:24px">🔐</div><div><b>Liberar novo admin</b><span>Adicione e-mails à whitelist</span></div></div>
+                <div class="lesson-item" onclick="go('tema')" style="padding:13px 16px;cursor:pointer"><div class="l-thumb" style="width:52px;height:52px;border-radius:14px;font-size:24px">🎨</div><div><b>Personalizar cores</b><span>Altere a paleta do site em tempo real</span></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ USUÁRIOS ══ -->
+        <section class="view" id="view-usuarios">
+          <div class="glass card">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px">
+              <div>
+                <div class="card-title">Gestão de alunos</div>
+                <div class="card-sub">Visualize e remova contas de alunos</div>
+              </div>
+              <div class="search-box" style="margin-left:auto">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <input type="text" placeholder="Buscar por nome ou e-mail…" oninput="window.userSearch(this.value)">
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="data" id="usersTable"></table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ WHITELIST ══ -->
+        <section class="view" id="view-whitelist">
+          <div class="glass card" style="margin-bottom:18px;border-color:color-mix(in srgb,var(--info) 40%,transparent)">
+            <div class="card-title">🔐 Como funciona a Whitelist</div>
+            <div class="card-sub" style="margin-bottom:0">
+              Novos administradores <b>só podem se cadastrar</b> depois que você adiciona o e-mail deles aqui.
+              Assim, o controle de quem entra no painel fica 100% nas mãos da equipe atual.
+            </div>
+          </div>
+          <div class="section-grid">
+            <div class="glass card">
+              <div class="card-title">➕ Liberar novo e-mail</div>
+              <div class="card-sub">O e-mail liberado poderá criar uma conta de administrador.</div>
+              <form id="whiteForm" style="display:flex;gap:10px;flex-wrap:wrap">
+                <div class="field" style="flex:1;margin:0;min-width:220px">
+                  <input type="email" id="whiteEmail" placeholder="novo.admin@email.com" required>
+                </div>
+                <button class="btn btn-primary" type="submit">Liberar acesso</button>
+              </form>
+            </div>
+            <div class="glass card">
+              <div class="card-title">📋 E-mails liberados</div>
+              <div class="card-sub"><span id="whiteCount">0</span> e-mails na whitelist</div>
+              <div class="lesson-list" id="whiteList" style="gap:9px"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ VÍDEOS ══ -->
+        <section class="view" id="view-videos">
+          <div class="glass card">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px">
+              <div>
+                <div class="card-title">Gestão de videoaulas</div>
+                <div class="card-sub">Adicione, edite ou remova conteúdo da biblioteca</div>
+              </div>
+              <div style="margin-left:auto;display:flex;gap:10px">
+                <div class="search-box">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                  <input type="text" placeholder="Buscar…" oninput="window.adminVideoSearch(this.value)">
+                </div>
+                <button class="btn btn-primary" onclick="openVideoForm()">＋ Nova videoaula</button>
+              </div>
+            </div>
+            <div id="adminVideoList"></div>
+          </div>
+        </section>
+
+        <!-- ══ SIMULADOS ══ -->
+        <section class="view" id="view-simulados">
+          <div class="glass card">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px">
+              <div>
+                <div class="card-title">Gestão de simulados</div>
+                <div class="card-sub">Crie provas com questões de múltipla escolha e correção automática</div>
+              </div>
+              <button class="btn btn-primary" style="margin-left:auto" onclick="openExerciseForm()">＋ Novo simulado</button>
+            </div>
+            <div id="adminExerciseList"></div>
+          </div>
+        </section>
+
+        <!-- ══ TEMA ══ -->
+        <section class="view" id="view-tema">
+          <div class="glass card" style="margin-bottom:18px;border-color:color-mix(in srgb,var(--accent) 45%,transparent)">
+            <div class="card-title">🎨 Configuração de cores em tempo real</div>
+            <div class="card-sub" style="margin-bottom:0">
+              As alterações aparecem <b>instantaneamente</b> em todo o site — fundo, destaques e tons de transparência —
+              para <b>todos os alunos</b>, assim que você salvar.
+            </div>
+          </div>
+          <div class="theme-grid">
+            <div class="glass card theme-controls">
+              <div class="theme-row">
+                <div class="tr-label"><b>Fundo profundo</b><span>Cor base do site</span></div>
+                <div class="color-input"><input type="color" id="tBgDeep" oninput="liveTheme()"><code id="tBgDeepHex">#0b0518</code></div>
+              </div>
+              <div class="theme-row">
+                <div class="tr-label"><b>Gradiente 1</b><span>Tom do céu (topo)</span></div>
+                <div class="color-input"><input type="color" id="tBgGrad1" oninput="liveTheme()"><code id="tBgGrad1Hex">#1c0a42</code></div>
+              </div>
+              <div class="theme-row">
+                <div class="tr-label"><b>Gradiente 2</b><span>Tom do horizonte</span></div>
+                <div class="color-input"><input type="color" id="tBgGrad2" oninput="liveTheme()"><code id="tBgGrad2Hex">#3d1a85</code></div>
+              </div>
+              <div class="theme-row">
+                <div class="tr-label"><b>Destaque principal</b><span>Botões e acentos</span></div>
+                <div class="color-input"><input type="color" id="tAccent" oninput="liveTheme()"><code id="tAccentHex">#8b5cf6</code></div>
+              </div>
+              <div class="theme-row">
+                <div class="tr-label"><b>Destaque secundário</b><span>Efeitos luminosos</span></div>
+                <div class="color-input"><input type="color" id="tAccent2" oninput="liveTheme()"><code id="tAccent2Hex">#e879f9</code></div>
+              </div>
+              <div class="theme-row">
+                <div class="tr-label"><b>Transparência do vidro</b><span>Opacidade dos cartões</span></div>
+                <input type="range" id="tOpacity" min="2" max="20" step="1" value="7" oninput="liveTheme()">
+              </div>
+              <div class="theme-row">
+                <div class="tr-label"><b>Desfoque do vidro</b><span>Intensidade do blur</span></div>
+                <input type="range" id="tBlur" min="6" max="40" step="1" value="18" oninput="liveTheme()">
+              </div>
+              <div class="theme-actions">
+                <button class="btn btn-primary" onclick="saveTheme()">💾 Salvar tema (aplica para todos)</button>
+                <button class="btn btn-ghost" onclick="resetTheme()">↺ Restaurar padrão</button>
+              </div>
+            </div>
+            <div class="theme-preview">
+              <div class="tp-stage">
+                <span class="tp-chip">🔍 Pré-visualização ao vivo</span>
+                <div class="tp-card">
+                  <div style="font-weight:800;margin-bottom:6px">Cartão de vidro</div>
+                  <div style="font-size:12.5px;color:var(--text-dim);margin-bottom:14px">Este cartão mostra a transparência e o desfoque atuais.</div>
+                  <div class="tp-btn"></div>
+                </div>
+              </div>
+              <div class="tp-bar">🖱️ Mexa nos controles e veja as mudanças acontecerem aqui e em toda a página.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ PERFIL ADMIN ══ -->
+        <section class="view" id="view-perfilAdmin">
+          <div class="profile-layout">
+            <div class="glass card profile-side">
+              <div id="profileAvatar"></div>
+              <h3 id="profileName">—</h3>
+              <div class="p-email" id="profileEmail">—</div>
+              <label class="btn btn-ghost btn-sm btn-block p-edit-photo" style="cursor:pointer">
+                📸 Trocar foto
+                <input type="file" accept="image/*" style="display:none" onchange="window.uploadAdminAvatar(this)">
+              </label>
+              <div class="plan-badge">🛡️ Administrador</div>
+            </div>
+            <div class="glass card">
+              <div class="card-title">Dados do administrador</div>
+              <div class="card-sub">E-mail, CPF e data de criação são fixos.</div>
+              <form id="adminProfileForm">
+                <div class="field">
+                  <label for="apUsername">Username</label>
+                  <input id="apUsername" type="text" minlength="3" maxlength="20" required>
+                </div>
+                <div class="form-row">
+                  <div class="field"><label>E-mail <span class="lock-chip">🔒 fixo</span></label><input id="apEmail" readonly></div>
+                  <div class="field"><label>CPF <span class="lock-chip">🔒 fixo</span></label><input id="apCpf" readonly></div>
+                </div>
+                <button class="btn btn-primary" type="submit">💾 Salvar</button>
+              </form>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- ═══════════ Modal Vídeo ═══════════ -->
+  <div class="modal-backdrop" id="videoFormModal">
+    <div class="modal modal-lg">
+      <button class="modal-close" onclick="closeModal('videoFormModal')">✕</button>
+      <h3 id="videoFormTitle">＋ Nova videoaula</h3>
+      <p class="modal-sub">Envie o vídeo direto do seu celular ou computador — ele fica armazenado na plataforma e os alunos assistem e baixam.</p>
+      <form id="videoForm">
+        <input type="hidden" id="vfId">
+        <div class="form-row">
+          <div class="field"><label>Título *</label><input id="vfTitle" required placeholder="Ex.: Los verbos reflexivos"></div>
+          <div class="field"><label>Módulo</label>
+            <select id="vfModule">
+              <option>Alfabeto</option><option>Saudações</option><option>Verbos</option><option>Gramática</option>
+              <option>Interpretação</option><option>Vocabulário</option><option>Escrita</option><option>Geral</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Arquivo do vídeo *</label>
+          <div class="drop-zone" id="vfDropZone" onclick="document.getElementById('vfFile').click()">
+            <div class="dz-icon">📤</div>
+            <div class="dz-text"><b>Enviar vídeo do dispositivo</b><span>Arraste o arquivo aqui ou clique para escolher</span></div>
+            <input type="file" id="vfFile" accept="video/*,.mp4,.webm,.mov,.mkv,.avi" style="display:none" onchange="window.uploadVideo(this)">
+          </div>
+          <div class="upload-progress" id="vfProgress" style="display:none">
+            <div class="progress" style="flex:1"><i id="vfProgressBar" style="width:0%"></i></div>
+            <span id="vfProgressPct" style="font-size:12px;color:var(--text-dim);font-weight:700">0%</span>
+          </div>
+          <div class="upload-done" id="vfUploadDone" style="display:none">✅ <b id="vfUploadName"></b> <button type="button" class="link-btn" onclick="window.clearVideoUpload()">remover</button></div>
+          <span class="hint">MP4, WebM, MOV… até 2GB. Enviado do seu dispositivo direto para a plataforma.</span>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Duração</label><input id="vfDuration" placeholder="Ex.: 7:30"></div>
+          <div class="field"><label>Ou URL externa (opcional)</label><input id="vfUrl" placeholder="https://…/video.mp4"></div>
+        </div>
+        <div class="field"><label>Emoji de capa</label><input id="vfEmoji" placeholder="Ex.: 🔤" maxlength="4"></div>
+        <div class="field"><label>Descrição</label><textarea id="vfDesc" placeholder="O que o aluno vai aprender nesta aula?"></textarea></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('videoFormModal')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">💾 Salvar videoaula</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════ Modal Simulado ═══════════ -->
+  <div class="modal-backdrop" id="exerciseFormModal">
+    <div class="modal modal-lg">
+      <button class="modal-close" onclick="closeModal('exerciseFormModal')">✕</button>
+      <h3 id="exerciseFormTitle">＋ Novo simulado</h3>
+      <p class="modal-sub">Cada questão tem 4 alternativas; marque a correta e adicione uma explicação.</p>
+      <form id="exerciseForm">
+        <input type="hidden" id="efId">
+        <div class="form-row">
+          <div class="field"><label>Título *</label><input id="efTitle" required placeholder="Ex.: Simulado — Verbos no presente"></div>
+          <div class="field"><label>Módulo</label>
+            <select id="efModule">
+              <option>Alfabeto</option><option>Saudações</option><option>Verbos</option><option>Gramática</option>
+              <option>Interpretação</option><option>Vocabulário</option><option>Escrita</option><option>Geral</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>Dificuldade</label>
+          <select id="efDifficulty"><option>Fácil</option><option selected>Médio</option><option>Difícil</option></select>
+        </div>
+        <div class="card-title" style="font-size:15px;margin-bottom:12px">Questões</div>
+        <div id="questionRows"></div>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="addQuestionRow()">＋ Adicionar questão</button>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('exerciseFormModal')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">💾 Salvar simulado</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════ Modal confirmar ═══════════ -->
+  <div class="modal-backdrop" id="confirmModal">
+    <div class="modal" style="width:min(420px,100%)">
+      <button class="modal-close" onclick="closeModal('confirmModal')">✕</button>
+      <h3 id="confirmTitle">Confirmar exclusão</h3>
+      <p class="modal-sub" id="confirmText">Tem certeza?</p>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="closeModal('confirmModal')">Cancelar</button>
+        <button class="btn btn-danger" id="confirmBtn" onclick="confirmAction()">Excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/admin.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js').catch(function () {});
+      });
+    }
+  </script>
+</body>
+</html>

@@ -109,7 +109,7 @@
     document.getElementById('usersTable').innerHTML =
       '<thead><tr><th>Aluno</th><th>E-mail</th><th>Nascimento</th><th>Cadastro</th><th>Ações</th></tr></thead><tbody>' +
       (list.map((u) =>
-        '<tr><td><div class="tbl-user">' + avatarHtml(u) + '<div><b>' + escapeHtml(u.username) + '</b><span>🎓 Aluno</span></div></div></td>' +
+        '<tr><td><div class="tbl-user">' + avatarHtml(u) + '<div><b>' + escapeHtml(u.username) + '</b><span>Aluno</span></div></div></td>' +
         '<td>' + escapeHtml(u.email) + '</td>' +
         '<td>' + formatDob(u.dob) + '</td>' +
         '<td>' + formatDate(u.createdAt) + '</td>' +
@@ -135,10 +135,10 @@
       document.getElementById('whiteList').innerHTML =
         state.whitelist.map((w) =>
           '<div class="lesson-item" style="padding:11px 14px;cursor:default">' +
-          '<div class="l-thumb" style="width:40px;height:40px;border-radius:12px;font-size:18px;background:var(--accent-soft)">🔑</div>' +
+          '<div class="l-thumb" style="width:40px;height:40px;border-radius:12px;font-size:18px;background:var(--accent-soft)">' + icon('key', 18) + '</div>' +
           '<div style="min-width:0;flex:1"><b>' + escapeHtml(w.email) + '</b><span>Liberado em ' + formatDate(w.createdAt) + '</span></div>' +
           '<button class="btn btn-danger btn-sm" onclick="askRemoveWhite(\'' + w.id + '\',\'' + w.email + '\')">Remover</button></div>'
-        ).join('') || '<div class="empty-state"><div class="es-icon">🔐</div><b>Nenhum e-mail liberado ainda</b></div>';
+        ).join('') || '<div class="empty-state"><div class="es-icon">' + icon('lock', 26) + '</div><b>Nenhum e-mail liberado ainda</b></div>';
     } catch (e) { handleApiError(e); }
   }
 
@@ -148,7 +148,7 @@
       const email = document.getElementById('whiteEmail').value.trim();
       await req.post('/api/admin/whitelist', { email });
       document.getElementById('whiteEmail').value = '';
-      toast('E-mail liberado! Agora o admin já pode se cadastrar. 🎉', 'success');
+      toast('E-mail liberado! Agora o admin já pode se cadastrar.', 'success');
       loadWhitelist(); loadStats();
     } catch (err) { toast(err.message, 'error'); }
   });
@@ -180,20 +180,20 @@
     const list = state.videos.filter((v) => (v.title + ' ' + v.module).toLowerCase().includes(q));
     const el = document.getElementById('adminVideoList');
     if (!list.length) {
-      el.innerHTML = '<div class="empty-state"><div class="es-icon">🎬</div><b>Nenhuma videoaula</b><span>Clique em "Nova videoaula" para começar.</span></div>';
+      el.innerHTML = '<div class="empty-state"><div class="es-icon">' + icon('play', 26) + '</div><b>Nenhuma videoaula</b><span>Clique em "Nova videoaula" para começar.</span></div>';
       return;
     }
     el.innerHTML = list.map((v, i) =>
       '<div class="lesson-item" style="cursor:default">' +
-      '<div class="l-thumb" style="' + thumbCss(v, i) + '">' + escapeHtml(v.emoji) + '</div>' +
+      '<div class="l-thumb" style="' + thumbCss(i) + '">' + icon('play', 22) + '</div>' +
       '<div style="min-width:0;flex:1"><b>' + escapeHtml(v.title) + '</b><span>' + escapeHtml(v.module) + ' · ' + escapeHtml(v.duration) + ' · ' + escapeHtml((v.url || '').slice(0, 46)) + '…</span></div>' +
-      '<button class="btn btn-ghost btn-sm" onclick="openVideoForm(\'' + v.id + '\')">✏️ Editar</button>' +
-      '<button class="btn btn-danger btn-sm" onclick="askDeleteVideo(\'' + v.id + '\')">🗑️</button></div>'
+      '<button class="btn btn-ghost btn-sm" onclick="openVideoForm(\'' + v.id + '\')">' + icon('edit', 14) + ' Editar</button>' +
+      '<button class="btn btn-danger btn-sm" onclick="askDeleteVideo(\'' + v.id + '\')">' + icon('trash', 14) + '</button></div>'
     ).join('');
   }
 
-  function thumbCss(v, i) {
-    return 'background:' + gradThumb(v.emoji, i).background.replace(/\n/g, ' ');
+  function thumbCss(i) {
+    return 'background:' + gradThumb(i).background.replace(/\n/g, ' ');
   }
 
   // ── Upload de vídeo (do dispositivo do admin) ──
@@ -260,7 +260,7 @@
         videoUploadName = data.name || file.name;
         document.getElementById('vfUploadName').textContent = videoUploadName + ' · ' + fmtBytes(data.size);
         document.getElementById('vfUploadDone').style.display = 'flex';
-        toast('Vídeo enviado! ✅', 'success');
+        toast('Vídeo enviado!', 'success');
       } else {
         toast((data && data.error) || 'Falha ao enviar o vídeo.', 'error');
       }
@@ -296,12 +296,11 @@
 
   window.openVideoForm = function (id) {
     const v = id ? state.videos.find((x) => x.id === id) : null;
-    document.getElementById('videoFormTitle').textContent = v ? '✏️ Editar videoaula' : '＋ Nova videoaula';
+    document.getElementById('videoFormTitle').textContent = v ? 'Editar videoaula' : 'Nova videoaula';
     document.getElementById('vfId').value = v ? v.id : '';
     document.getElementById('vfTitle').value = v ? v.title : '';
     document.getElementById('vfModule').value = v ? v.module : 'Geral';
     document.getElementById('vfDuration').value = v ? (v.duration || '') : '';
-    document.getElementById('vfEmoji').value = v ? (v.emoji || '🎬') : '';
     document.getElementById('vfDesc').value = v ? (v.description || '') : '';
     // se o vídeo atual já é um arquivo local, mostra o chip; senão deixa a URL externa
     resetUploadUi();
@@ -329,14 +328,13 @@
       module: document.getElementById('vfModule').value,
       url: videoUploadUrl || urlField,
       duration: document.getElementById('vfDuration').value.trim() || '00:00',
-      emoji: document.getElementById('vfEmoji').value.trim() || '🎬',
       description: document.getElementById('vfDesc').value.trim(),
     };
     const id = document.getElementById('vfId').value;
     try {
       if (id) await req.put('/api/admin/videos/' + id, payload);
       else await req.post('/api/admin/videos', payload);
-      toast(id ? 'Videoaula atualizada! ✨' : 'Videoaula publicada! 🎉', 'success');
+      toast(id ? 'Videoaula atualizada!' : 'Videoaula publicada!', 'success');
       closeModal('videoFormModal');
       e.target.reset();
       resetUploadUi();
@@ -366,15 +364,15 @@
   function renderExercises() {
     const el = document.getElementById('adminExerciseList');
     if (!state.exercises.length) {
-      el.innerHTML = '<div class="empty-state"><div class="es-icon">📝</div><b>Nenhum simulado</b><span>Clique em "Novo simulado" para criar o primeiro.</span></div>';
+      el.innerHTML = '<div class="empty-state"><div class="es-icon">' + icon('quiz', 26) + '</div><b>Nenhum simulado</b><span>Clique em "Novo simulado" para criar o primeiro.</span></div>';
       return;
     }
     el.innerHTML = state.exercises.map((x) =>
       '<div class="lesson-item" style="cursor:default">' +
-      '<div class="l-thumb" style="width:52px;height:52px;border-radius:14px;font-size:24px;background:var(--accent-soft)">📝</div>' +
+      '<div class="l-thumb" style="width:52px;height:52px;border-radius:14px;font-size:24px;background:var(--accent-soft)">' + icon('quiz', 22) + '</div>' +
       '<div style="min-width:0;flex:1"><b>' + escapeHtml(x.title) + '</b><span>' + escapeHtml(x.module) + ' · ' + escapeHtml(x.difficulty) + ' · ' + (x.questions || []).length + ' questões</span></div>' +
-      '<button class="btn btn-ghost btn-sm" onclick="openExerciseForm(\'' + x.id + '\')">✏️ Editar</button>' +
-      '<button class="btn btn-danger btn-sm" onclick="askDeleteExercise(\'' + x.id + '\')">🗑️</button></div>'
+      '<button class="btn btn-ghost btn-sm" onclick="openExerciseForm(\'' + x.id + '\')">' + icon('edit', 14) + ' Editar</button>' +
+      '<button class="btn btn-danger btn-sm" onclick="askDeleteExercise(\'' + x.id + '\')">' + icon('trash', 14) + '</button></div>'
     ).join('');
   }
 
@@ -390,7 +388,7 @@
         '<input class="q-opt" value="' + escapeHtml(o) + '"></div>'
       ).join('') +
       '<div class="field"><label>Explicação (aparece após responder)</label><input class="q-explain" value="' + escapeHtml(q.explain || '') + '" placeholder="Ex.: Ser expressa identidade..."></div>' +
-      '<button type="button" class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="this.closest(\'.glass\').remove()">🗑️ Remover questão</button></div>';
+      '<button type="button" class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="this.closest(\'.glass\').remove()">' + icon('trash', 14) + ' Remover questão</button></div>';
   }
 
   window.addQuestionRow = function () {
@@ -399,7 +397,7 @@
 
   window.openExerciseForm = function (id) {
     const x = id ? state.exercises.find((e) => e.id === id) : null;
-    document.getElementById('exerciseFormTitle').textContent = x ? '✏️ Editar simulado' : '＋ Novo simulado';
+    document.getElementById('exerciseFormTitle').textContent = x ? 'Editar simulado' : 'Novo simulado';
     document.getElementById('efId').value = x ? x.id : '';
     document.getElementById('efTitle').value = x ? x.title : '';
     document.getElementById('efModule').value = x ? x.module : 'Geral';
@@ -438,7 +436,7 @@
     try {
       if (id) await req.put('/api/admin/exercises/' + id, payload);
       else await req.post('/api/admin/exercises', payload);
-      toast(id ? 'Simulado atualizado! ✨' : 'Simulado criado! 🎉', 'success');
+      toast(id ? 'Simulado atualizado!' : 'Simulado criado!', 'success');
       closeModal('exerciseFormModal');
       e.target.reset();
       loadExercises(); loadStats();
@@ -511,7 +509,7 @@
   window.saveTheme = async function () {
     try {
       await req.post('/api/admin/theme', currentTheme());
-      toast('Tema salvo! A nova paleta já está valendo para todos os alunos. 🎨', 'success');
+      toast('Tema salvo! A nova paleta já está valendo para todos os alunos.', 'success');
     } catch (err) {
       toast(err.message, 'error');
     }
@@ -529,7 +527,7 @@
       const data = await req.patch('/api/auth/admin/profile', { username: document.getElementById('apUsername').value.trim() });
       API.user = data.user;
       me.username = data.user.username;
-      toast('Perfil atualizado! ✨', 'success');
+      toast('Perfil atualizado!', 'success');
       renderHeader();
     } catch (err) { toast(err.message, 'error'); }
   });
@@ -545,7 +543,7 @@
         const data = await req.patch('/api/auth/admin/profile', { avatar: reader.result });
         API.user = data.user;
         me.avatar = data.user.avatar;
-        toast('Foto atualizada! 📸', 'success');
+        toast('Foto atualizada!', 'success');
         renderHeader();
       } catch (err) { toast(err.message, 'error'); }
     };

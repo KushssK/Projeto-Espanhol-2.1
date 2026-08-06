@@ -1,8 +1,11 @@
-// Landing page — autenticação (login / cadastro / admin)
+// Landing page — autenticação em 2 etapas: e-mail/senha + código enviado por e-mail
 (function () {
   const authModal = document.getElementById('authModal');
   const titleEl = document.getElementById('authTitle');
   let currentTab = 'login';
+
+  // estado da etapa do código (retém e-mail/senha apenas em memória, para reenvio)
+  let pendingAuth = null; // { email, password }
 
   // navbar esconde ao rolar para baixo
   const navbar = document.getElementById('navbar');
@@ -16,11 +19,19 @@
 
   function renderTitle() {
     const titles = {
-      login: ['<h3>Bem-vindo(a) de volta! 👋</h3><p class="modal-sub">Entre para continuar sua jornada no espanhol.</p>'],
-      register: ['<h3>Crie sua conta gratuita 🚀</h3><p class="modal-sub">Acesso total a videoaulas, simulados, exercícios e conversa com outros alunos. Sem cartão, sem barreiras.</p>'],
-      admin: ['<h3>Painel administrativo 🛡️</h3><p class="modal-sub">Área exclusiva para gestão da plataforma.</p>'],
+      login: ['<h3>Bem-vindo(a) de volta!</h3><p class="modal-sub">Entre para continuar sua jornada no espanhol.</p>'],
+      register: ['<h3>Crie sua conta gratuita</h3><p class="modal-sub">Acesso total a videoaulas, simulados, exercícios e conversa com outros alunos. Sem cartão, sem barreiras.</p>'],
+      admin: ['<h3>Painel administrativo</h3><p class="modal-sub">Área exclusiva para gestão da plataforma.</p>'],
+      code: ['<h3>Confirme seu acesso</h3><p class="modal-sub">Digite o código de 6 dígitos enviado para o seu e-mail.</p>'],
     };
     titleEl.innerHTML = titles[currentTab][0];
+  }
+
+  function showOnlyPane(paneId) {
+    ['loginForm', 'registerForm', 'adminForm', 'adminLoginForm', 'codePane'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = id === paneId ? '' : 'none';
+    });
   }
 
   function switchTab(tab) {
@@ -28,10 +39,8 @@
     document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
     const tabMap = { login: 'tab-login', register: 'tab-register' };
     if (currentTab !== 'admin') document.getElementById(tabMap[currentTab]).classList.add('active');
-    document.getElementById('loginForm').style.display = currentTab === 'login' ? '' : 'none';
-    document.getElementById('registerForm').style.display = currentTab === 'register' ? '' : 'none';
-    document.getElementById('adminForm').style.display = currentTab === 'admin' ? '' : 'none';
-    document.getElementById('adminLoginForm').style.display = 'none';
+    document.getElementById('authTabs').style.display = '';
+    showOnlyPane(currentTab === 'admin' ? 'adminLoginForm' : currentTab === 'register' ? 'registerForm' : 'loginForm');
     renderTitle();
   }
 
@@ -44,6 +53,7 @@
   };
 
   window.openAuth = function (tab) {
+    pendingAuth = null;
     switchTab(tab || 'login');
     authModal.classList.add('open');
   };
@@ -58,6 +68,70 @@
   window.openReset = function () {
     closeAuth();
     openModal('resetModal');
+  };
+
+  // ─── Etapa do código (2º fator) ───
+  function showCodePane(data, email) {
+    currentTab = 'code';
+    pendingAuth = { email, password: pendingAuth ? pendingAuth.password : '' };
+    document.getElementById('authTabs').style.display = 'none';
+    showOnlyPane('codePane');
+    renderTitle();
+    document.getElementById('codeEmail').textContent = email;
+    document.getElementById('codeInput').value = '';
+    // em modo dev (sem SMTP), o servidor devolve o código para exibição
+    const hint = document.getElementById('codeDevHint');
+    if (data && data.devCode) {
+      hint.style.display = '';
+      hint.innerHTML = 'Modo de desenvolvimento: seu código é <b>' + data.devCode + '</b>. Configure SMTP_HOST/SMTP_USER/SMTP_PASS para envio real por e-mail.';
+    } else {
+      hint.style.display = 'none';
+    }
+    document.getElementById('codeInput').focus();
+  }
+
+  window.backToLogin = function () {
+    pendingAuth = null;
+    switchTab('login');
+  };
+
+  window.resendCode = async function () {
+    if (!pendingAuth) return;
+    const link = document.getElementById('resendLink');
+    link.disabled = true;
+    try {
+      const data = await req.post('/api/auth/send-code', { email: pendingAuth.email, password: pendingAuth.password });
+      if (data.devCode) {
+        const hint = document.getElementById('codeDevHint');
+        hint.style.display = '';
+        hint.innerHTML = 'Modo de desenvolvimento: seu código é <b>' + data.devCode + '</b>.';
+      }
+      toast('Novo código enviado para ' + pendingAuth.email + '!', 'success');
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      setTimeout(() => { link.disabled = false; }, 2000);
+    }
+  };
+
+  window.verifyCode = async function () {
+    if (!pendingAuth) return;
+    const code = document.getElementById('codeInput').value.trim();
+    if (!/^\d{6}$/.test(code)) { toast('Digite o código de 6 dígitos.', 'error'); return; }
+    const btn = document.getElementById('codeBtn');
+    btn.disabled = true; btn.textContent = 'Verificando…';
+    try {
+      const data = await req.post('/api/auth/verify-code', { email: pendingAuth.email, code });
+      API.token = data.token;
+      if (data.role === 'admin') { data.user.role = 'admin'; }
+      API.user = data.user;
+      toast('Bem-vindo(a), ' + data.user.username + '!', 'success');
+      pendingAuth = null;
+      setTimeout(() => { window.location.href = data.role === 'admin' ? '/admin.html' : '/dashboard.html'; }, 450);
+    } catch (err) {
+      toast(err.message, 'error');
+      btn.disabled = false; btn.textContent = 'Verificar código';
+    }
   };
 
   // ─── PWA: instalar o app (acesso offline) ───
@@ -85,7 +159,7 @@
     deferredPrompt = null;
     const chip = document.getElementById('installChip');
     if (chip) chip.style.display = 'none';
-    toast('App instalado! Agora é só abrir sem internet. 📱', 'success');
+    toast('App instalado! Agora é só abrir sem internet.', 'success');
   };
 
   window.maskCpf = function (el) {
@@ -97,55 +171,39 @@
     el.value = out;
   };
 
-  // ─── Login aluno (com fallback automático para admin) ───
-  document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('loginBtn');
-    btn.disabled = true; btn.textContent = 'Entrando…';
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
+  // ─── Login (etapa 1: credenciais → envia código por e-mail) ───
+  async function startCodeLogin(email, password, btn, btnLabel) {
+    btn.disabled = true; btn.textContent = 'Enviando código…';
     try {
-      const data = await req.post('/api/auth/login', { email, password });
-      API.token = data.token;
-      API.user = data.user;
-      toast('Bem-vindo(a), ' + data.user.username + '! 🎉', 'success');
-      setTimeout(() => { window.location.href = '/dashboard.html'; }, 450);
-    } catch (err) {
-      // se não for aluno, tenta o painel administrativo
-      try {
-        const admin = await req.post('/api/auth/admin/login', { email, password });
-        API.token = admin.token;
-        admin.user.role = 'admin';
-        API.user = admin.user;
-        toast('Bem-vindo ao painel, ' + admin.user.username + '! 🛡️', 'success');
-        setTimeout(() => { window.location.href = '/admin.html'; }, 450);
-        return;
-      } catch (adminErr) {
-        toast(err.message, 'error');
-        btn.disabled = false; btn.textContent = 'Entrar agora';
-      }
-    }
-  });
-
-  // ─── Login admin (pane próprio) ───
-  document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('admLoginBtn');
-    btn.disabled = true; btn.textContent = 'Entrando no painel…';
-    try {
-      const data = await req.post('/api/auth/admin/login', {
-        email: document.getElementById('admLoginEmail').value.trim(),
-        password: document.getElementById('admLoginPassword').value,
-      });
-      API.token = data.token;
-      data.user.role = 'admin';
-      API.user = data.user;
-      toast('Bem-vindo ao painel, ' + data.user.username + '! 🛡️', 'success');
-      setTimeout(() => { window.location.href = '/admin.html'; }, 450);
+      const data = await req.post('/api/auth/send-code', { email, password });
+      pendingAuth = { email, password };
+      showCodePane(data, email);
+      toast('Código enviado para ' + email + '!', 'success');
     } catch (err) {
       toast(err.message, 'error');
-      btn.disabled = false; btn.textContent = 'Entrar no painel';
+      btn.disabled = false; btn.textContent = btnLabel;
     }
+  }
+
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    startCodeLogin(
+      document.getElementById('loginEmail').value.trim(),
+      document.getElementById('loginPassword').value,
+      document.getElementById('loginBtn'),
+      'Entrar agora'
+    );
+  });
+
+  // ─── Login admin (mesmo fluxo em 2 etapas) ───
+  document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    startCodeLogin(
+      document.getElementById('admLoginEmail').value.trim(),
+      document.getElementById('admLoginPassword').value,
+      document.getElementById('admLoginBtn'),
+      'Entrar no painel'
+    );
   });
 
   // ─── Cadastro aluno ───
@@ -162,7 +220,7 @@
       });
       API.token = data.token;
       API.user = data.user;
-      toast('Conta criada! Boa jornada, ' + data.user.username + ' 🎉', 'success');
+      toast('Conta criada! Boa jornada, ' + data.user.username + '!', 'success');
       setTimeout(() => { window.location.href = '/dashboard.html'; }, 450);
     } catch (err) {
       toast(err.message, 'error');
@@ -185,7 +243,7 @@
       API.token = data.token;
       data.user.role = 'admin';
       API.user = data.user;
-      toast('Admin cadastrado! Bem-vindo ao painel 🛡️', 'success');
+      toast('Admin cadastrado! Bem-vindo ao painel.', 'success');
       setTimeout(() => { window.location.href = '/admin.html'; }, 450);
     } catch (err) {
       toast(err.message, 'error');
@@ -197,7 +255,7 @@
   document.getElementById('resetForm').addEventListener('submit', (e) => {
     e.preventDefault();
     closeModal('resetModal');
-    toast('Se o e-mail existir, enviamos o link de recuperação. 📩', 'info');
+    toast('Se o e-mail existir, enviamos o link de recuperação.', 'info');
     e.target.reset();
   });
 

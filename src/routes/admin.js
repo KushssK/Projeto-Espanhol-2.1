@@ -140,7 +140,7 @@ router.post('/videos', requireAdmin, async (req, res) => {
   const video = await db.get().createVideo({
     title: String(title).trim(), description: String(description || '').trim(),
     module: String(mod || 'Geral').trim(), url: String(url || '').trim(),
-    duration: String(duration || '').trim(), emoji: String(emoji || '🎬'),
+    duration: String(duration || '').trim(), emoji: String(emoji || ''),
   });
   res.status(201).json(video);
 });

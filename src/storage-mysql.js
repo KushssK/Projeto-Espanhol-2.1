@@ -182,7 +182,7 @@ class MySqlStore {
     const id = require('./passwords').uuid();
     await this.pool.query(
       'INSERT INTO videos (id, title, description, module, url, duration, emoji) VALUES (?,?,?,?,?,?,?)',
-      [id, data.title, data.description || '', data.module || 'Geral', data.url || '', data.duration || '00:00', data.emoji || '🎬']
+      [id, data.title, data.description || '', data.module || 'Geral', data.url || '', data.duration || '00:00', data.emoji || '']
     );
     return this.getVideo(id);
   }

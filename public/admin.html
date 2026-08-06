@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Painel Administrativo — Construindo Saberes</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%238b5cf6'/><stop offset='1' stop-color='%23e879f9'/></linearGradient></defs><rect width='100' height='100' rx='24' fill='url(%23g)'/><path d='M50 26 18 40l32 14 32-14-32-14z' fill='white'/><path d='M30 46v16c0 5 9 8 20 8s20-3 20-8V46' fill='none' stroke='white' stroke-width='6' stroke-linecap='round'/></svg>">
   <meta name="theme-color" content="#8b5cf6">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
@@ -22,7 +22,9 @@
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="logo" onclick="go('visao')">
-        <div class="logo-mark">🛡️</div>
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
+        </div>
         <div class="logo-text">Construindo Saberes<small>Admin</small></div>
       </div>
 
@@ -68,10 +70,13 @@
           <div id="sidebarAvatar"></div>
           <div style="min-width:0">
             <div class="u-name" id="sidebarName">—</div>
-            <div class="u-role">🛡️ Administrador</div>
+            <div class="u-role">Administrador</div>
           </div>
         </div>
-        <button class="btn btn-ghost btn-sm btn-block" onclick="go('perfilAdmin')">⚙️ Meu perfil</button>
+        <button class="btn btn-ghost btn-sm btn-block" onclick="go('perfilAdmin')">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6.5 8-6.5s8 2.5 8 6.5"/></svg>
+          Meu perfil
+        </button>
         <button class="btn btn-ghost btn-sm btn-block" onclick="doLogout()">Sair</button>
       </div>
     </aside>
@@ -79,7 +84,9 @@
     <!-- Main -->
     <main class="app-main">
       <header class="topbar">
-        <button class="btn btn-icon menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+        <button class="btn btn-icon menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
         <div>
           <h1 id="pageTitle">Visão Geral</h1>
           <div class="breadcrumb" id="pageBreadcrumb">Painel administrativo</div>
@@ -97,32 +104,48 @@
           <div class="welcome-band glass">
             <div id="welcomeAvatar"></div>
             <div>
-              <h2>Bem-vindo(a), <span id="welcomeName">admin</span>! 🛡️</h2>
+              <h2>Bem-vindo(a), <span id="welcomeName">admin</span>!</h2>
               <p>Aqui está o resumo da plataforma em tempo real.</p>
             </div>
           </div>
           <div class="stat-grid">
-            <div class="glass stat-card"><div class="sc-icon">🎓</div><div class="sc-value" id="stUsers">0</div><div class="sc-label">Alunos cadastrados</div></div>
-            <div class="glass stat-card"><div class="sc-icon">🎬</div><div class="sc-value" id="stVideos">0</div><div class="sc-label">Videoaulas</div></div>
-            <div class="glass stat-card"><div class="sc-icon">📝</div><div class="sc-value" id="stExercises">0</div><div class="sc-label">Simulados</div></div>
-            <div class="glass stat-card"><div class="sc-icon">💬</div><div class="sc-value" id="stMessages">0</div><div class="sc-label">Mensagens no chat</div></div>
+            <div class="glass stat-card"><div class="sc-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
+            </div><div class="sc-value" id="stUsers">0</div><div class="sc-label">Alunos cadastrados</div></div>
+            <div class="glass stat-card"><div class="sc-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+            </div><div class="sc-value" id="stVideos">0</div><div class="sc-label">Videoaulas</div></div>
+            <div class="glass stat-card"><div class="sc-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
+            </div><div class="sc-value" id="stExercises">0</div><div class="sc-label">Simulados</div></div>
+            <div class="glass stat-card"><div class="sc-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div><div class="sc-value" id="stMessages">0</div><div class="sc-label">Mensagens no chat</div></div>
           </div>
           <div class="section-grid">
             <div class="glass card">
-              <div class="card-title">👥 Últimos alunos cadastrados</div>
+              <div class="card-title">Últimos alunos cadastrados</div>
               <div class="card-sub">Atividade recente na plataforma</div>
               <div class="table-wrap">
                 <table class="data" id="recentUsersTable"></table>
               </div>
             </div>
             <div class="glass card">
-              <div class="card-title">⚡ Ações rápidas</div>
+              <div class="card-title">Ações rápidas</div>
               <div class="card-sub">Atalhos de gestão</div>
               <div class="lesson-list" style="gap:9px">
-                <div class="lesson-item" onclick="go('videos')" style="padding:13px 16px;cursor:pointer"><div class="l-thumb" style="width:52px;height:52px;border-radius:14px;font-size:24px">🎬</div><div><b>Adicionar videoaula</b><span>Publique novo conteúdo</span></div></div>
-                <div class="lesson-item" onclick="go('simulados')" style="padding:13px 16px;cursor:pointer"><div class="l-thumb" style="width:52px;height:52px;border-radius:14px;font-size:24px">📝</div><div><b>Criar simulado</b><span>Monte questões com correção</span></div></div>
-                <div class="lesson-item" onclick="go('whitelist')" style="padding:13px 16px;cursor:pointer"><div class="l-thumb" style="width:52px;height:52px;border-radius:14px;font-size:24px">🔐</div><div><b>Liberar novo admin</b><span>Adicione e-mails à whitelist</span></div></div>
-                <div class="lesson-item" onclick="go('tema')" style="padding:13px 16px;cursor:pointer"><div class="l-thumb" style="width:52px;height:52px;border-radius:14px;font-size:24px">🎨</div><div><b>Personalizar cores</b><span>Altere a paleta do site em tempo real</span></div></div>
+                <div class="lesson-item" onclick="go('videos')" style="padding:13px 16px;cursor:pointer"><div class="l-thumb" style="width:52px;height:52px;border-radius:14px;font-size:24px">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+                </div><div><b>Adicionar videoaula</b><span>Publique novo conteúdo</span></div></div>
+                <div class="lesson-item" onclick="go('simulados')" style="padding:13px 16px;cursor:pointer"><div class="l-thumb" style="width:52px;height:52px;border-radius:14px;font-size:24px">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
+                </div><div><b>Criar simulado</b><span>Monte questões com correção</span></div></div>
+                <div class="lesson-item" onclick="go('whitelist')" style="padding:13px 16px;cursor:pointer"><div class="l-thumb" style="width:52px;height:52px;border-radius:14px;font-size:24px">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                </div><div><b>Liberar novo admin</b><span>Adicione e-mails à whitelist</span></div></div>
+                <div class="lesson-item" onclick="go('tema')" style="padding:13px 16px;cursor:pointer"><div class="l-thumb" style="width:52px;height:52px;border-radius:14px;font-size:24px">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+                </div><div><b>Personalizar cores</b><span>Altere a paleta do site em tempo real</span></div></div>
               </div>
             </div>
           </div>
@@ -150,7 +173,7 @@
         <!-- ══ WHITELIST ══ -->
         <section class="view" id="view-whitelist">
           <div class="glass card" style="margin-bottom:18px;border-color:color-mix(in srgb,var(--info) 40%,transparent)">
-            <div class="card-title">🔐 Como funciona a Whitelist</div>
+            <div class="card-title">Como funciona a Whitelist</div>
             <div class="card-sub" style="margin-bottom:0">
               Novos administradores <b>só podem se cadastrar</b> depois que você adiciona o e-mail deles aqui.
               Assim, o controle de quem entra no painel fica 100% nas mãos da equipe atual.
@@ -158,7 +181,7 @@
           </div>
           <div class="section-grid">
             <div class="glass card">
-              <div class="card-title">➕ Liberar novo e-mail</div>
+              <div class="card-title">Liberar novo e-mail</div>
               <div class="card-sub">O e-mail liberado poderá criar uma conta de administrador.</div>
               <form id="whiteForm" style="display:flex;gap:10px;flex-wrap:wrap">
                 <div class="field" style="flex:1;margin:0;min-width:220px">
@@ -168,7 +191,7 @@
               </form>
             </div>
             <div class="glass card">
-              <div class="card-title">📋 E-mails liberados</div>
+              <div class="card-title">E-mails liberados</div>
               <div class="card-sub"><span id="whiteCount">0</span> e-mails na whitelist</div>
               <div class="lesson-list" id="whiteList" style="gap:9px"></div>
             </div>
@@ -212,7 +235,7 @@
         <!-- ══ TEMA ══ -->
         <section class="view" id="view-tema">
           <div class="glass card" style="margin-bottom:18px;border-color:color-mix(in srgb,var(--accent) 45%,transparent)">
-            <div class="card-title">🎨 Configuração de cores em tempo real</div>
+            <div class="card-title">Configuração de cores em tempo real</div>
             <div class="card-sub" style="margin-bottom:0">
               As alterações aparecem <b>instantaneamente</b> em todo o site — fundo, destaques e tons de transparência —
               para <b>todos os alunos</b>, assim que você salvar.
@@ -249,20 +272,26 @@
                 <input type="range" id="tBlur" min="6" max="40" step="1" value="18" oninput="liveTheme()">
               </div>
               <div class="theme-actions">
-                <button class="btn btn-primary" onclick="saveTheme()">💾 Salvar tema (aplica para todos)</button>
-                <button class="btn btn-ghost" onclick="resetTheme()">↺ Restaurar padrão</button>
+                <button class="btn btn-primary" onclick="saveTheme()">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  Salvar tema (aplica para todos)
+                </button>
+                <button class="btn btn-ghost" onclick="resetTheme()">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  Restaurar padrão
+                </button>
               </div>
             </div>
             <div class="theme-preview">
               <div class="tp-stage">
-                <span class="tp-chip">🔍 Pré-visualização ao vivo</span>
+                <span class="tp-chip">Pré-visualização ao vivo</span>
                 <div class="tp-card">
                   <div style="font-weight:800;margin-bottom:6px">Cartão de vidro</div>
                   <div style="font-size:12.5px;color:var(--text-dim);margin-bottom:14px">Este cartão mostra a transparência e o desfoque atuais.</div>
                   <div class="tp-btn"></div>
                 </div>
               </div>
-              <div class="tp-bar">🖱️ Mexa nos controles e veja as mudanças acontecerem aqui e em toda a página.</div>
+              <div class="tp-bar">Mexa nos controles e veja as mudanças acontecerem aqui e em toda a página.</div>
             </div>
           </div>
         </section>
@@ -275,10 +304,11 @@
               <h3 id="profileName">—</h3>
               <div class="p-email" id="profileEmail">—</div>
               <label class="btn btn-ghost btn-sm btn-block p-edit-photo" style="cursor:pointer">
-                📸 Trocar foto
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                Trocar foto
                 <input type="file" accept="image/*" style="display:none" onchange="window.uploadAdminAvatar(this)">
               </label>
-              <div class="plan-badge">🛡️ Administrador</div>
+              <div class="plan-badge">Administrador</div>
             </div>
             <div class="glass card">
               <div class="card-title">Dados do administrador</div>
@@ -289,10 +319,13 @@
                   <input id="apUsername" type="text" minlength="3" maxlength="20" required>
                 </div>
                 <div class="form-row">
-                  <div class="field"><label>E-mail <span class="lock-chip">🔒 fixo</span></label><input id="apEmail" readonly></div>
-                  <div class="field"><label>CPF <span class="lock-chip">🔒 fixo</span></label><input id="apCpf" readonly></div>
+                  <div class="field"><label>E-mail <span class="lock-chip"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> fixo</span></label><input id="apEmail" readonly></div>
+                  <div class="field"><label>CPF <span class="lock-chip"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> fixo</span></label><input id="apCpf" readonly></div>
                 </div>
-                <button class="btn btn-primary" type="submit">💾 Salvar</button>
+                <button class="btn btn-primary" type="submit">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  Salvar
+                </button>
               </form>
             </div>
           </div>
@@ -305,7 +338,7 @@
   <div class="modal-backdrop" id="videoFormModal">
     <div class="modal modal-lg">
       <button class="modal-close" onclick="closeModal('videoFormModal')">✕</button>
-      <h3 id="videoFormTitle">＋ Nova videoaula</h3>
+      <h3 id="videoFormTitle">Nova videoaula</h3>
       <p class="modal-sub">Envie o vídeo direto do seu celular ou computador — ele fica armazenado na plataforma e os alunos assistem e baixam.</p>
       <form id="videoForm">
         <input type="hidden" id="vfId">
@@ -321,7 +354,9 @@
         <div class="field">
           <label>Arquivo do vídeo *</label>
           <div class="drop-zone" id="vfDropZone" onclick="document.getElementById('vfFile').click()">
-            <div class="dz-icon">📤</div>
+            <div class="dz-icon">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
             <div class="dz-text"><b>Enviar vídeo do dispositivo</b><span>Arraste o arquivo aqui ou clique para escolher</span></div>
             <input type="file" id="vfFile" accept="video/*,.mp4,.webm,.mov,.mkv,.avi" style="display:none" onchange="window.uploadVideo(this)">
           </div>
@@ -329,18 +364,20 @@
             <div class="progress" style="flex:1"><i id="vfProgressBar" style="width:0%"></i></div>
             <span id="vfProgressPct" style="font-size:12px;color:var(--text-dim);font-weight:700">0%</span>
           </div>
-          <div class="upload-done" id="vfUploadDone" style="display:none">✅ <b id="vfUploadName"></b> <button type="button" class="link-btn" onclick="window.clearVideoUpload()">remover</button></div>
+          <div class="upload-done" id="vfUploadDone" style="display:none"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--success);flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg> <b id="vfUploadName"></b> <button type="button" class="link-btn" onclick="window.clearVideoUpload()">remover</button></div>
           <span class="hint">MP4, WebM, MOV… até 2GB. Enviado do seu dispositivo direto para a plataforma.</span>
         </div>
         <div class="form-row">
           <div class="field"><label>Duração</label><input id="vfDuration" placeholder="Ex.: 7:30"></div>
           <div class="field"><label>Ou URL externa (opcional)</label><input id="vfUrl" placeholder="https://…/video.mp4"></div>
         </div>
-        <div class="field"><label>Emoji de capa</label><input id="vfEmoji" placeholder="Ex.: 🔤" maxlength="4"></div>
         <div class="field"><label>Descrição</label><textarea id="vfDesc" placeholder="O que o aluno vai aprender nesta aula?"></textarea></div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button type="button" class="btn btn-ghost" onclick="closeModal('videoFormModal')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">💾 Salvar videoaula</button>
+          <button type="submit" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Salvar videoaula
+          </button>
         </div>
       </form>
     </div>
@@ -350,7 +387,7 @@
   <div class="modal-backdrop" id="exerciseFormModal">
     <div class="modal modal-lg">
       <button class="modal-close" onclick="closeModal('exerciseFormModal')">✕</button>
-      <h3 id="exerciseFormTitle">＋ Novo simulado</h3>
+      <h3 id="exerciseFormTitle">Novo simulado</h3>
       <p class="modal-sub">Cada questão tem 4 alternativas; marque a correta e adicione uma explicação.</p>
       <form id="exerciseForm">
         <input type="hidden" id="efId">
@@ -371,7 +408,10 @@
         <button type="button" class="btn btn-ghost btn-sm" onclick="addQuestionRow()">＋ Adicionar questão</button>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
           <button type="button" class="btn btn-ghost" onclick="closeModal('exerciseFormModal')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">💾 Salvar simulado</button>
+          <button type="submit" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Salvar simulado
+          </button>
         </div>
       </form>
     </div>

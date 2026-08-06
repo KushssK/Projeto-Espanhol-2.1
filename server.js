@@ -32,7 +32,7 @@ app.get(/^\/(?!api\/).*/, (req, res) => {
     app.listen(PORT, () => {
       console.log('');
       console.log('──────────────────────────────────────────────');
-      console.log('  🌟 Construindo Saberes — Plataforma ativa!');
+      console.log('  Construindo Saberes — Plataforma ativa!');
       console.log('  ➜  http://localhost:' + PORT);
       console.log('  ➜  Admin:  kaikyzen@gmail.com (senha no seed)');
       console.log('  ➜  Conteúdo vazio — adicione videoaulas e simulados pelo painel');

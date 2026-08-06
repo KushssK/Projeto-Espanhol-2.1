@@ -7,7 +7,7 @@
    - Vídeos são baixados pelo botão "Baixar" (não entram no
      cache para não estourar o armazenamento do navegador).
    ══════════════════════════════════════════════════════════ */
-const CACHE = 'cs-v4';
+const CACHE = 'cs-v5';
 
 const SHELL = [
   '/',

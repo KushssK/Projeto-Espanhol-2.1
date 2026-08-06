@@ -8,13 +8,13 @@
   const me = API.user;
 
   const MODULES = [
-    { name: 'Alfabeto', emoji: '🔤', desc: 'Letras, sons e pronúncia desde o zero.' },
-    { name: 'Saudações', emoji: '👋', desc: 'Cumprimentos e cortesias do dia a dia.' },
-    { name: 'Verbos', emoji: '⚡', desc: 'Conjugações e os verbos essenciais.' },
-    { name: 'Gramática', emoji: '📚', desc: 'Regras e estrutura da língua.' },
-    { name: 'Interpretação', emoji: '📖', desc: 'Compreensão auditiva e de leitura.' },
-    { name: 'Vocabulário', emoji: '🧠', desc: 'Palavras e expressões por tema.' },
-    { name: 'Escrita', emoji: '✍️', desc: 'Escreva com correção e estilo.' },
+    { name: 'Alfabeto', icon: 'type', desc: 'Letras, sons e pronúncia desde o zero.' },
+    { name: 'Saudações', icon: 'smile', desc: 'Cumprimentos e cortesias do dia a dia.' },
+    { name: 'Verbos', icon: 'zap', desc: 'Conjugações e os verbos essenciais.' },
+    { name: 'Gramática', icon: 'book', desc: 'Regras e estrutura da língua.' },
+    { name: 'Interpretação', icon: 'eye', desc: 'Compreensão auditiva e de leitura.' },
+    { name: 'Vocabulário', icon: 'list', desc: 'Palavras e expressões por tema.' },
+    { name: 'Escrita', icon: 'edit', desc: 'Escreva com correção e estilo.' },
   ];
 
   // ── Conversas pendentes (sobrevivem a recarregar a página) ──
@@ -102,7 +102,7 @@
   function buildModuleSubnav() {
     const sub = document.getElementById('moduleSubnav');
     sub.innerHTML = MODULES.map((m) =>
-      '<button class="subnav-item" data-module="' + m.name + '" onclick="goModule(\'' + m.name + '\')">' + m.emoji + ' ' + m.name + '</button>'
+      '<button class="subnav-item" data-module="' + m.name + '" onclick="goModule(\'' + m.name + '\')">' + icon(m.icon, 15) + ' ' + m.name + '</button>'
     ).join('');
   }
 
@@ -139,7 +139,7 @@
         const pct = ls.length ? Math.round((d / ls.length) * 100) : 0;
         return '<div class="glass module-card" onclick="goModule(\'' + m.name + '\')">' +
           '<span class="mc-arrow">→</span>' +
-          '<span class="mc-emoji">' + m.emoji + '</span>' +
+          '<span class="mc-emoji">' + icon(m.icon, 30) + '</span>' +
           '<h4>' + m.name + '</h4><p>' + m.desc + '</p>' +
           '<div class="mc-progress"><div class="progress" style="flex:1"><i style="width:' + pct + '%"></i></div><span>' + d + '/' + ls.length + '</span></div>' +
           '</div>';
@@ -148,39 +148,39 @@
       return;
     }
 
-    document.getElementById('pageTitle').textContent = mod.emoji + ' ' + mod.name;
+    document.getElementById('pageTitle').textContent = mod.name;
     document.getElementById('pageBreadcrumb').textContent = mod.desc;
 
     const lessonItems = lessons.map((v, i) => {
       const watched = !!prog[v.id];
       return '<div class="glass lesson-item" onclick="openVideo(\'' + v.id + '\')">' +
-        '<div class="l-thumb" style="' + thumbCss(v, i) + '">' + escapeHtml(v.emoji) + '</div>' +
+        '<div class="l-thumb" style="' + thumbCss(i) + '">' + icon('play', 22) + '</div>' +
         '<div style="min-width:0"><b>' + escapeHtml(v.title) + '</b><span>' + (watched ? '✓ Concluída' : 'Aula ' + (i + 1) + ' · ' + escapeHtml(v.duration)) + '</span></div>' +
-        (watched ? '<div class="lesson-check">✓</div>' : '<div class="l-play">▶</div>') +
+        (watched ? '<div class="lesson-check">✓</div>' : '<div class="l-play">' + icon('play', 17) + '</div>') +
         '</div>';
-    }).join('') || '<div class="empty-state"><div class="es-icon">🎬</div><b>Sem aulas neste módulo ainda</b></div>';
+    }).join('') || '<div class="empty-state"><div class="es-icon">' + icon('play', 28) + '</div><b>Sem aulas neste módulo ainda</b></div>';
 
     const exItems = exs.map((e) => {
       const qs = e.questions || [];
       return '<div class="glass exercise-card" style="min-width:0">' +
-        '<div class="ec-head"><span class="ec-emoji">📝</span><span class="difficulty">' + diffDots(e.difficulty) + '</span></div>' +
+        '<div class="ec-head"><span class="ec-emoji">' + icon('quiz', 26) + '</span><span class="difficulty">' + diffDots(e.difficulty) + '</span></div>' +
         '<h4>' + escapeHtml(e.title) + '</h4>' +
-        '<div class="meta"><span>❓ ' + qs.length + ' questões</span><span>' + escapeHtml(e.difficulty) + '</span></div>' +
+        '<div class="meta"><span>' + qs.length + ' questões</span><span>' + escapeHtml(e.difficulty) + '</span></div>' +
         '<button class="btn btn-ghost btn-sm" onclick="startQuiz(\'' + e.id + '\')">Iniciar simulado</button></div>';
     }).join('');
 
     root.innerHTML = backBtn +
       '<div class="glass card" style="margin-bottom:18px">' +
-      '<div class="card-title">' + mod.emoji + ' ' + mod.name + ' — ' + lessons.length + ' aulas</div>' +
-      '<div class="card-sub">' + (done === lessons.length && lessons.length ? '🎉 Módulo concluído! Parabéns!' : 'Assista às aulas e complete o módulo para ganhar pontos.') + '</div>' +
+      '<div class="card-title">' + mod.name + ' — ' + lessons.length + ' aulas</div>' +
+      '<div class="card-sub">' + (done === lessons.length && lessons.length ? 'Módulo concluído! Parabéns!' : 'Assista às aulas e complete o módulo para ganhar pontos.') + '</div>' +
       '<div class="progress" style="margin-bottom:20px"><i style="width:' + (lessons.length ? Math.round(done / lessons.length * 100) : 0) + '%"></i></div>' +
       '<div class="lesson-list">' + lessonItems + '</div></div>' +
       (exItems ? '<div class="glass card"><div class="card-title">Simulados do módulo</div><div class="exercise-grid" style="margin-top:14px">' + exItems + '</div></div>' : '');
   }
 
   // ── Vídeos ──
-  function thumbCss(v, i) {
-    return 'background:' + gradThumb(v.emoji, i).background.replace(/\n/g, ' ');
+  function thumbCss(i) {
+    return 'background:' + gradThumb(i).background.replace(/\n/g, ' ');
   }
 
   function renderVideoFilters() {
@@ -208,21 +208,21 @@
     if (q) list = list.filter((v) => (v.title + ' ' + v.description + ' ' + v.module).toLowerCase().includes(q));
     const grid = document.getElementById('videoGrid');
     if (!list.length) {
-      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">🔍</div><b>Nenhuma videoaula encontrada</b><span>Tente outra busca ou filtro.</span></div>';
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">' + icon('search', 28) + '</div><b>Nenhuma videoaula encontrada</b><span>Tente outra busca ou filtro.</span></div>';
       return;
     }
     grid.innerHTML = list.map((v, i) =>
       '<div class="glass vcard">' +
-      '<div class="vthumb" style="' + thumbCss(v, i) + '" onclick="openVideo(\'' + v.id + '\')">' + escapeHtml(v.emoji) +
-      '<div class="vplay">▶</div><span class="vdur">' + escapeHtml(v.duration) + '</span></div>' +
+      '<div class="vthumb" style="' + thumbCss(i) + '" onclick="openVideo(\'' + v.id + '\')">' + icon('play', 40) +
+      '<span class="vdur">' + escapeHtml(v.duration) + '</span></div>' +
       '<div class="vbody">' +
       '<span class="chip">' + escapeHtml(v.module) + '</span>' +
       '<h4 onclick="openVideo(\'' + v.id + '\')">' + escapeHtml(v.title) + '</h4>' +
       '<p>' + escapeHtml(v.description) + '</p>' +
-      '<div class="vmeta"><span>⏱ ' + escapeHtml(v.duration) + '</span><span>·</span><span>' + (300 + i * 57) + ' alunos</span></div>' +
+      '<div class="vmeta"><span>' + escapeHtml(v.duration) + '</span><span>·</span><span>' + (300 + i * 57) + ' alunos</span></div>' +
       '<div class="vactions">' +
-      '<button class="btn btn-primary btn-sm" onclick="openVideo(\'' + v.id + '\')">▶ Assistir</button>' +
-      '<a class="btn btn-ghost btn-sm" href="' + escapeHtml(v.url) + '" download target="_blank" rel="noopener">📥 Download</a>' +
+      '<button class="btn btn-primary btn-sm" onclick="openVideo(\'' + v.id + '\')">' + icon('play', 14) + ' Assistir</button>' +
+      '<a class="btn btn-ghost btn-sm" href="' + escapeHtml(v.url) + '" download target="_blank" rel="noopener">' + icon('download', 14) + ' Download</a>' +
       '</div></div></div>'
     ).join('');
   }
@@ -242,12 +242,12 @@
       '<div class="player-wrap">' +
       '<div class="player-stage"><video src="' + url + '" controls autoplay preload="metadata"></video>' +
       '<div style="display:flex;gap:10px;margin-top:14px">' +
-      '<a class="btn btn-primary btn-sm" href="' + url + '" download target="_blank" rel="noopener">📥 Baixar para offline</a>' +
+      '<a class="btn btn-primary btn-sm" href="' + url + '" download target="_blank" rel="noopener">' + icon('download', 14) + ' Baixar para offline</a>' +
       '<button class="btn btn-ghost btn-sm" onclick="markWatched(\'' + v.id + '\')">✓ Marcar como concluída</button>' +
       '</div></div>' +
       '<div><div class="card-title" style="margin-bottom:10px">Aulas relacionadas</div><div class="related-list">' +
       related.map((r, i) => '<div class="related-item" onclick="openVideo(\'' + r.id + '\')">' +
-        '<div class="r-thumb" style="' + thumbCss(r, i) + '">' + escapeHtml(r.emoji) + '</div>' +
+        '<div class="r-thumb" style="' + thumbCss(i) + '">' + icon('play', 20) + '</div>' +
         '<div style="min-width:0"><b>' + escapeHtml(r.title) + '</b><span>' + escapeHtml(r.module) + ' · ' + escapeHtml(r.duration) + '</span></div></div>'
       ).join('') + '</div></div></div>';
     openModal('videoModal');
@@ -261,7 +261,7 @@
     const prog = getProgress();
     prog[id] = { watched: true, at: Date.now() };
     setProgress(prog);
-    toast('Aula marcada como concluída! 🎉', 'success');
+    toast('Aula marcada como concluída!', 'success');
     refreshStats();
     renderInicio();
     renderModuleGrid();
@@ -293,15 +293,15 @@
     const watched = state.videos.filter((v) => prog[v.id]).slice(-5).reverse();
     const list = document.getElementById('continueList');
     if (!watched.length) {
-      list.innerHTML = '<div class="empty-state" style="padding:30px 16px"><div class="es-icon">🎬</div><b>Você ainda não assistiu nenhuma aula</b><span>Comece pela trilha de módulos!</span></div>' +
+      list.innerHTML = '<div class="empty-state" style="padding:30px 16px"><div class="es-icon">' + icon('play', 28) + '</div><b>Você ainda não assistiu nenhuma aula</b><span>Comece pela trilha de módulos!</span></div>' +
         '<button class="btn btn-primary btn-sm btn-block" onclick="go(\'modulos\')">Explorar módulos</button>';
       return;
     }
     list.innerHTML = watched.map((v, i) =>
       '<div class="lesson-item" style="cursor:pointer" onclick="openVideo(\'' + v.id + '\')">' +
-      '<div class="l-thumb" style="width:60px;height:52px;border-radius:10px;font-size:24px;' + thumbCss(v, i) + '">' + escapeHtml(v.emoji) + '</div>' +
+      '<div class="l-thumb" style="width:60px;height:52px;border-radius:10px;font-size:24px;' + thumbCss(i) + '">' + icon('play', 22) + '</div>' +
       '<div style="min-width:0"><b>' + escapeHtml(v.title) + '</b><span>' + escapeHtml(v.module) + ' · ' + escapeHtml(v.duration) + '</span></div>' +
-      '<div class="l-play" style="width:34px;height:34px;font-size:12px">▶</div></div>'
+      '<div class="l-play" style="width:34px;height:34px;font-size:12px">' + icon('play', 14) + '</div></div>'
     ).join('');
   }
 
@@ -312,7 +312,7 @@
       const d = ls.filter((l) => prog[l.id]).length;
       const pct = ls.length ? Math.round((d / ls.length) * 100) : 0;
       return '<div class="glass module-card" style="cursor:pointer" onclick="goModule(\'' + m.name + '\')">' +
-        '<span class="mc-emoji">' + m.emoji + '</span><h4>' + m.name + '</h4>' +
+        '<span class="mc-emoji">' + icon(m.icon, 28) + '</span><h4>' + m.name + '</h4>' +
         '<div class="mc-progress"><div class="progress" style="flex:1"><i style="width:' + pct + '%"></i></div><span>' + pct + '%</span></div>' +
         '</div>';
     }).join('');
@@ -328,16 +328,16 @@
   function renderExercises() {
     const grid = document.getElementById('exerciseGrid');
     if (!state.exercises.length) {
-      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">📝</div><b>Nenhum simulado disponível ainda</b></div>';
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">' + icon('quiz', 28) + '</div><b>Nenhum simulado disponível ainda</b></div>';
       return;
     }
     grid.innerHTML = state.exercises.map((e) => {
       const qs = e.questions || [];
       return '<div class="glass exercise-card">' +
-        '<div class="ec-head"><span class="ec-emoji">📝</span><span class="difficulty">' + diffDots(e.difficulty) + '</span></div>' +
+        '<div class="ec-head"><span class="ec-emoji">' + icon('quiz', 26) + '</span><span class="difficulty">' + diffDots(e.difficulty) + '</span></div>' +
         '<span class="chip" style="align-self:flex-start;font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent-2)">' + escapeHtml(e.module) + '</span>' +
         '<h4>' + escapeHtml(e.title) + '</h4>' +
-        '<div class="meta"><span>❓ ' + qs.length + ' questões</span><span>🎯 ' + escapeHtml(e.difficulty) + '</span></div>' +
+        '<div class="meta"><span>' + qs.length + ' questões</span><span>' + escapeHtml(e.difficulty) + '</span></div>' +
         '<p style="font-size:13px;color:var(--text-dim);flex:1">Correção instantânea com explicação de cada resposta.</p>' +
         '<button class="btn btn-primary btn-sm" onclick="startQuiz(\'' + e.id + '\')">Iniciar simulado →</button></div>';
     }).join('');
@@ -386,10 +386,10 @@
     });
     document.getElementById('quizFeedback').innerHTML =
       '<div class="quiz-explain ' + (correct ? 'correct' : 'wrong') + '">' +
-      (correct ? '✅ <b>¡Correcto!</b> ' : '❌ <b>Não foi dessa vez.</b> ') +
+      '<b>' + (correct ? '¡Correcto!' : 'Não foi dessa vez.') + '</b> ' +
       escapeHtml(q.explain || '') + '</div>' +
       '<button class="btn btn-primary" onclick="nextQuiz()">' +
-      (state.quizIdx + 1 >= state.quiz.questions.length ? 'Ver resultado 🏁' : 'Próxima questão →') + '</button>';
+      (state.quizIdx + 1 >= state.quiz.questions.length ? 'Ver resultado' : 'Próxima questão →') + '</button>';
   };
 
   window.prevQuiz = function () {
@@ -412,9 +412,9 @@
     const total = state.quiz.questions.length;
     const pct = Math.round((state.quizScore / total) * 100);
     const C = 2 * Math.PI * 62;
-    const msg = pct >= 80 ? ['¡Fenomenal! 🏆', 'Você domina este módulo. Siga assim!'] :
-                pct >= 50 ? ['¡Muy bien! 💪', 'Bom resultado! Revise os pontos que errou.'] :
-                ['¡Ánimo! 🌱', 'Continue praticando — cada erro é um aprendizado.'];
+    const msg = pct >= 80 ? ['¡Fenomenal!', 'Você domina este módulo. Siga assim!'] :
+                pct >= 50 ? ['¡Muy bien!', 'Bom resultado! Revise os pontos que errou.'] :
+                ['¡Ánimo!', 'Continue praticando — cada erro é um aprendizado.'];
     document.getElementById('quizContent').innerHTML =
       '<div style="text-align:center">' +
       '<div class="result-ring"><svg viewBox="0 0 150 150">' +
@@ -486,10 +486,10 @@
     const avatar = document.getElementById('chatAvatar');
     const title = document.getElementById('chatTitle');
     if (!state.activeChannel) {
-      avatar.textContent = '💬';
+      avatar.innerHTML = icon('chat', 18);
       avatar.style.background = '';
       title.textContent = 'Conversas';
-      body.innerHTML = '<div class="empty-state"><div class="es-icon">💬</div><b>Nenhuma conversa selecionada</b><span>Escolha uma conversa ou clique em "Nova conversa" para falar com um colega.</span></div>';
+      body.innerHTML = '<div class="empty-state"><div class="es-icon">' + icon('chat', 28) + '</div><b>Nenhuma conversa selecionada</b><span>Escolha uma conversa ou clique em "Nova conversa" para falar com um colega.</span></div>';
       return;
     }
     const disp = chatDisplayName(state.activeChannel);
@@ -510,7 +510,7 @@
       const cls = mine ? 'bubble me' : 'bubble them';
       const name = mine ? '' : '<div class="b-name">' + escapeHtml(m.sender) + '</div>';
       return html + '<div class="' + cls + '">' + name + escapeHtml(m.body) + '<div class="b-meta">' + time + (mine ? ' ✓✓' : '') + '</div></div>';
-    }).join('') || '<div class="empty-state"><div class="es-icon">💬</div><b>Inicie a conversa!</b><span>Mande a primeira mensagem.</span></div>';
+    }).join('') || '<div class="empty-state"><div class="es-icon">' + icon('chat', 28) + '</div><b>Inicie a conversa!</b><span>Mande a primeira mensagem.</span></div>';
     body.scrollTop = body.scrollHeight;
   }
 
@@ -536,9 +536,9 @@
       el.innerHTML = students.map((s) =>
         '<div class="lesson-item" style="cursor:pointer" onclick="startChatWith(\'' + escapeHtml(s.username) + '\')">' +
         avatarHtml(s) +
-        '<div style="min-width:0"><b>' + escapeHtml(s.username) + '</b><span>🎓 Aluno</span></div>' +
-        '<div class="l-play" style="width:34px;height:34px;font-size:12px">💬</div></div>'
-      ).join('') || '<div class="empty-state"><div class="es-icon">👥</div><b>Nenhum outro aluno cadastrado ainda</b><span>Quando houver mais alunos, você poderá conversar com eles aqui.</span></div>';
+        '<div style="min-width:0"><b>' + escapeHtml(s.username) + '</b><span>Aluno</span></div>' +
+        '<div class="l-play" style="width:34px;height:34px;font-size:12px">' + icon('chat', 14) + '</div></div>'
+      ).join('') || '<div class="empty-state"><div class="es-icon">' + icon('users', 28) + '</div><b>Nenhum outro aluno cadastrado ainda</b><span>Quando houver mais alunos, você poderá conversar com eles aqui.</span></div>';
       openModal('newChatModal');
     } catch (err) {
       toast(err.message, 'error');
@@ -608,7 +608,7 @@
       const data = await req.patch('/api/auth/profile', { username: document.getElementById('profUsername').value.trim() });
       API.user = data.user;
       me.username = data.user.username;
-      toast('Perfil atualizado com sucesso! ✨', 'success');
+      toast('Perfil atualizado com sucesso!', 'success');
       renderHeader();
     } catch (err) {
       toast(err.message, 'error');
@@ -626,7 +626,7 @@
         const data = await req.patch('/api/auth/profile', { avatar: reader.result });
         API.user = data.user;
         me.avatar = data.user.avatar;
-        toast('Foto de perfil atualizada! 📸', 'success');
+        toast('Foto de perfil atualizada!', 'success');
         renderHeader();
       } catch (err) {
         toast(err.message, 'error');

@@ -1,6 +1,8 @@
 const express = require('express');
 const { hashPassword, verifyPassword, newToken, uuid } = require('../passwords');
 const db = require('../db');
+const authCodes = require('../auth-codes');
+const { sendAuthCode } = require('../mailer');
 
 const router = express.Router();
 
@@ -62,6 +64,60 @@ router.post('/login', async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Erro interno ao entrar.' });
+  }
+});
+
+// ---------- Acesso em 2 etapas: credenciais + código enviado por e-mail ----------
+// Etapa 1: valida e-mail/senha e envia um código de 6 dígitos para o e-mail cadastrado.
+// Detecta automaticamente se o e-mail é de aluno ou admin (mesma lógica do login).
+router.post('/send-code', async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    const em = String(email || '').trim().toLowerCase();
+    const store = db.get();
+    const user = await store.getUserByEmail(em);
+    const admin = user ? null : await store.getAdminByEmail(em);
+    const who = user || admin;
+    if (!who || !verifyPassword(password, who.salt, who.hash)) {
+      return res.status(401).json({ error: 'E-mail ou senha incorretos.' });
+    }
+    const kind = user ? 'aluno' : 'admin';
+    const sent = authCodes.generate(kind, em);
+    if (sent.cooldown) {
+      return res.status(429).json({ error: 'Aguarde ' + sent.wait + 's para reenviar o código.', retryAfter: sent.wait });
+    }
+    const result = await sendAuthCode(em, sent.code);
+    // o código de dev só é devolvido fora de produção (para testes locais sem SMTP)
+    const isProd = process.env.NODE_ENV === 'production';
+    res.json({ sent: true, kind, mode: result.mode, devCode: result.mode === 'dev' && !isProd ? sent.code : undefined, expiresIn: 600 });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erro ao enviar o código de acesso.' });
+  }
+});
+
+// Etapa 2: confirma o código e emite o token (login concluído).
+// A verificação descobre sozinha se o e-mail é de aluno ou admin (verifyAny).
+router.post('/verify-code', async (req, res) => {
+  try {
+    const { email, code } = req.body || {};
+    const em = String(email || '').trim().toLowerCase();
+    const store = db.get();
+    const check = authCodes.verifyAny(em, code);
+    if (!check.ok) return res.status(401).json({ error: check.error });
+    if (check.kind === 'admin') {
+      const admin = await store.getAdminByEmail(em);
+      const token = newToken();
+      const updated = await store.updateAdmin(admin.id, { token });
+      return res.json({ token, user: publicAdmin(updated), role: 'admin' });
+    }
+    const user = await store.getUserByEmail(em);
+    const token = newToken();
+    const updated = await store.updateUser(user.id, { token });
+    res.json({ token, user: publicUser(updated) });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erro ao validar o código.' });
   }
 });
 

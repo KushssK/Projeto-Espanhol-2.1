@@ -5,7 +5,7 @@
     return;
   }
   const me = API.user;
-  const MODULES = ['Alfabeto', 'Saudações', 'Verbos', 'Gramática', 'Interpretação', 'Vocabulário', 'Escrita', 'Geral'];
+  const MODULES = ['Conversação', 'Cultura Hispânica', 'Dicas de Aprendizagem', 'Expressões e Girias do Cotidiano', 'Gramática', 'Leitura e Compreensão de Texto', 'Pronúncia', 'Vocabulário', 'Geral'];
 
   const state = {
     users: [], videos: [], exercises: [], whitelist: [], stats: null,
@@ -196,137 +196,35 @@
     return 'background:' + gradThumb(i).background.replace(/\n/g, ' ');
   }
 
-  // ── Upload de vídeo (do dispositivo do admin) ──
-  let videoUploadUrl = '';
-  let videoUploadName = '';
-
-  function fmtBytes(b) {
-    if (!b && b !== 0) return '';
-    if (b < 1024) return b + ' B';
-    if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
-    if (b < 1024 * 1024 * 1024) return (b / (1024 * 1024)).toFixed(1) + ' MB';
-    return (b / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+  // ── Helper YouTube ──
+  function ytThumb(url) {
+    const m = String(url || '').match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{11})/);
+    return m ? 'https://img.youtube.com/vi/' + m[1] + '/mqdefault.jpg' : '';
   }
-
-  function resetUploadUi() {
-    videoUploadUrl = '';
-    videoUploadName = '';
-    document.getElementById('vfProgress').style.display = 'none';
-    document.getElementById('vfUploadDone').style.display = 'none';
-  }
-
-  window.clearVideoUpload = function () {
-    resetUploadUi();
-    document.getElementById('vfFile').value = '';
-    toast('Vídeo removido do formulário.', 'info');
-  };
-
-  window.uploadVideo = function (input) {
-    const file = input.files && input.files[0];
-    if (!file) return;
-    if (!/^video\//.test(file.type) && !/\.(mp4|webm|mov|m4v|mkv|avi|ogv|mpeg|mpg|3gp)$/i.test(file.name)) {
-      toast('Envie um arquivo de vídeo (MP4, WebM, MOV…).', 'error');
-      input.value = '';
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024 * 1024) { toast('O vídeo é muito grande (máx. 2GB).', 'error'); input.value = ''; return; }
-
-    const prog = document.getElementById('vfProgress');
-    const bar = document.getElementById('vfProgressBar');
-    const pct = document.getElementById('vfProgressPct');
-    prog.style.display = 'flex';
-    bar.style.width = '0%';
-    pct.textContent = '0%';
-
-    const fd = new FormData();
-    fd.append('file', file);
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/admin/videos/upload');
-    xhr.setRequestHeader('Authorization', 'Bearer ' + API.token);
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) {
-        const p = Math.round((e.loaded / e.total) * 100);
-        bar.style.width = p + '%';
-        pct.textContent = p + '%';
-      }
-    };
-    xhr.onload = () => {
-      prog.style.display = 'none';
-      input.value = '';
-      let data = null;
-      try { data = JSON.parse(xhr.responseText); } catch (e) { /* corpo não-JSON */ }
-      if (xhr.status >= 200 && xhr.status < 300 && data && data.url) {
-        videoUploadUrl = data.url;
-        videoUploadName = data.name || file.name;
-        document.getElementById('vfUploadName').textContent = videoUploadName + ' · ' + fmtBytes(data.size);
-        document.getElementById('vfUploadDone').style.display = 'flex';
-        toast('Vídeo enviado!', 'success');
-      } else {
-        toast((data && data.error) || 'Falha ao enviar o vídeo.', 'error');
-      }
-    };
-    xhr.onerror = () => {
-      prog.style.display = 'none';
-      input.value = '';
-      toast('Falha de rede ao enviar o vídeo.', 'error');
-    };
-    xhr.send(fd);
-  };
-
-  // arrastar e soltar no dropzone
-  (function () {
-    const dz = document.getElementById('vfDropZone');
-    if (!dz) return;
-    ['dragenter', 'dragover'].forEach((ev) => dz.addEventListener(ev, (e) => {
-      e.preventDefault(); e.stopPropagation(); dz.classList.add('drag');
-    }));
-    ['dragleave', 'drop'].forEach((ev) => dz.addEventListener(ev, (e) => {
-      e.preventDefault(); e.stopPropagation(); dz.classList.remove('drag');
-    }));
-    dz.addEventListener('drop', (e) => {
-      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-      if (!file) return;
-      const input = document.getElementById('vfFile');
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      input.files = dt.files;
-      uploadVideo(input);
-    });
-  })();
 
   window.openVideoForm = function (id) {
     const v = id ? state.videos.find((x) => x.id === id) : null;
-    document.getElementById('videoFormTitle').textContent = v ? 'Editar videoaula' : 'Nova videoaula';
+    document.getElementById('videoFormTitle').textContent = v ? 'Editar aula' : 'Nova aula';
     document.getElementById('vfId').value = v ? v.id : '';
     document.getElementById('vfTitle').value = v ? v.title : '';
-    document.getElementById('vfModule').value = v ? v.module : 'Geral';
+    document.getElementById('vfModule').value = v ? v.module : 'Conversação';
     document.getElementById('vfDuration').value = v ? (v.duration || '') : '';
     document.getElementById('vfDesc').value = v ? (v.description || '') : '';
-    // se o vídeo atual já é um arquivo local, mostra o chip; senão deixa a URL externa
-    resetUploadUi();
-    if (v && v.url && String(v.url).startsWith('/uploads/videos/')) {
-      videoUploadUrl = v.url;
-      videoUploadName = decodeURIComponent(String(v.url).split('/').pop());
-      document.getElementById('vfUploadName').textContent = videoUploadName + ' (já enviado) — envie outro para substituir';
-      document.getElementById('vfUploadDone').style.display = 'flex';
-      document.getElementById('vfUrl').value = '';
-    } else {
-      document.getElementById('vfUrl').value = v ? (v.url || '') : '';
-    }
+    document.getElementById('vfUrl').value = v ? (v.url || '') : '';
     openModal('videoFormModal');
   };
 
   document.getElementById('videoForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const urlField = document.getElementById('vfUrl').value.trim();
-    if (!videoUploadUrl && !urlField) {
-      toast('Envie o vídeo do dispositivo ou cole uma URL externa.', 'error');
+    const url = document.getElementById('vfUrl').value.trim();
+    if (!url) {
+      toast('Cole o link do YouTube do vídeo.', 'error');
       return;
     }
     const payload = {
       title: document.getElementById('vfTitle').value.trim(),
       module: document.getElementById('vfModule').value,
-      url: videoUploadUrl || urlField,
+      url: url,
       duration: document.getElementById('vfDuration').value.trim() || '00:00',
       description: document.getElementById('vfDesc').value.trim(),
     };
@@ -334,10 +232,9 @@
     try {
       if (id) await req.put('/api/admin/videos/' + id, payload);
       else await req.post('/api/admin/videos', payload);
-      toast(id ? 'Videoaula atualizada!' : 'Videoaula publicada!', 'success');
+      toast(id ? 'Aula atualizada!' : 'Aula publicada!', 'success');
       closeModal('videoFormModal');
       e.target.reset();
-      resetUploadUi();
       loadVideos(); loadStats();
     } catch (err) { toast(err.message, 'error'); }
   });

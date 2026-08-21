@@ -338,38 +338,18 @@
   <div class="modal-backdrop" id="videoFormModal">
     <div class="modal modal-lg">
       <button class="modal-close" onclick="closeModal('videoFormModal')">✕</button>
-      <h3 id="videoFormTitle">Nova videoaula</h3>
-      <p class="modal-sub">Envie o vídeo direto do seu celular ou computador — ele fica armazenado na plataforma e os alunos assistem e baixam.</p>
+      <h3 id="videoFormTitle">Nova aula</h3>
+      <p class="modal-sub">Cole o link do YouTube do vídeo. Os alunos assistem diretamente na plataforma.</p>
       <form id="videoForm">
         <input type="hidden" id="vfId">
+        <div class="field"><label>Link do YouTube *</label><input id="vfUrl" required placeholder="https://www.youtube.com/watch?v=..." type="url"></div>
         <div class="form-row">
-          <div class="field"><label>Título *</label><input id="vfTitle" required placeholder="Ex.: Los verbos reflexivos"></div>
-          <div class="field"><label>Módulo</label>
+          <div class="field"><label>Título *</label><input id="vfTitle" required placeholder="Ex.: La conversación diaria"></div>
+          <div class="field"><label>Tópico</label>
             <select id="vfModule">
-              <option>Alfabeto</option><option>Saudações</option><option>Verbos</option><option>Gramática</option>
-              <option>Interpretação</option><option>Vocabulário</option><option>Escrita</option><option>Geral</option>
+              <option>Conversação</option><option>Cultura Hispânica</option><option>Dicas de Aprendizagem</option><option>Expressões e Girias do Cotidiano</option><option>Gramática</option><option>Leitura e Compreensão de Texto</option><option>Pronúncia</option><option>Vocabulário</option><option>Geral</option>
             </select>
           </div>
-        </div>
-        <div class="field">
-          <label>Arquivo do vídeo *</label>
-          <div class="drop-zone" id="vfDropZone" onclick="document.getElementById('vfFile').click()">
-            <div class="dz-icon">
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            </div>
-            <div class="dz-text"><b>Enviar vídeo do dispositivo</b><span>Arraste o arquivo aqui ou clique para escolher</span></div>
-            <input type="file" id="vfFile" accept="video/*,.mp4,.webm,.mov,.mkv,.avi" style="display:none" onchange="window.uploadVideo(this)">
-          </div>
-          <div class="upload-progress" id="vfProgress" style="display:none">
-            <div class="progress" style="flex:1"><i id="vfProgressBar" style="width:0%"></i></div>
-            <span id="vfProgressPct" style="font-size:12px;color:var(--text-dim);font-weight:700">0%</span>
-          </div>
-          <div class="upload-done" id="vfUploadDone" style="display:none"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--success);flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg> <b id="vfUploadName"></b> <button type="button" class="link-btn" onclick="window.clearVideoUpload()">remover</button></div>
-          <span class="hint">MP4, WebM, MOV… até 2GB. Enviado do seu dispositivo direto para a plataforma.</span>
-        </div>
-        <div class="form-row">
-          <div class="field"><label>Duração</label><input id="vfDuration" placeholder="Ex.: 7:30"></div>
-          <div class="field"><label>Ou URL externa (opcional)</label><input id="vfUrl" placeholder="https://…/video.mp4"></div>
         </div>
         <div class="field"><label>Descrição</label><textarea id="vfDesc" placeholder="O que o aluno vai aprender nesta aula?"></textarea></div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
@@ -393,10 +373,9 @@
         <input type="hidden" id="efId">
         <div class="form-row">
           <div class="field"><label>Título *</label><input id="efTitle" required placeholder="Ex.: Simulado — Verbos no presente"></div>
-          <div class="field"><label>Módulo</label>
+          <div class="field"><label>Tópico</label>
             <select id="efModule">
-              <option>Alfabeto</option><option>Saudações</option><option>Verbos</option><option>Gramática</option>
-              <option>Interpretação</option><option>Vocabulário</option><option>Escrita</option><option>Geral</option>
+              <option>Conversação</option><option>Cultura Hispânica</option><option>Dicas de Aprendizagem</option><option>Expressões e Girias do Cotidiano</option><option>Gramática</option><option>Leitura e Compreensão de Texto</option><option>Pronúncia</option><option>Vocabulário</option><option>Geral</option>
             </select>
           </div>
         </div>

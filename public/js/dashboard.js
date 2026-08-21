@@ -8,13 +8,14 @@
   const me = API.user;
 
   const MODULES = [
-    { name: 'Alfabeto', icon: 'type', desc: 'Letras, sons e pronúncia desde o zero.' },
-    { name: 'Saudações', icon: 'smile', desc: 'Cumprimentos e cortesias do dia a dia.' },
-    { name: 'Verbos', icon: 'zap', desc: 'Conjugações e os verbos essenciais.' },
-    { name: 'Gramática', icon: 'book', desc: 'Regras e estrutura da língua.' },
-    { name: 'Interpretação', icon: 'eye', desc: 'Compreensão auditiva e de leitura.' },
+    { name: 'Conversação', icon: 'chat', desc: 'Pratique conversas do dia a dia em espanhol.' },
+    { name: 'Cultura Hispânica', icon: 'globe', desc: 'Tradições, costumes e curiosidades dos países hispânicos.' },
+    { name: 'Dicas de Aprendizagem', icon: 'zap', desc: 'Estratégias para acelerar seu aprendizado.' },
+    { name: 'Expressões e Girias do Cotidiano', icon: 'smile', desc: 'Frases populares e gírias usadas no dia a dia.' },
+    { name: 'Gramática', icon: 'book', desc: 'Regras e estrutura da língua espanhola.' },
+    { name: 'Leitura e Compreensão de Texto', icon: 'eye', desc: 'Desenvolva sua capacidade de leitura e interpretação.' },
+    { name: 'Pronúncia', icon: 'mic', desc: 'Sons, sotaques e entonação correta.' },
     { name: 'Vocabulário', icon: 'list', desc: 'Palavras e expressões por tema.' },
-    { name: 'Escrita', icon: 'edit', desc: 'Escreva com correção e estilo.' },
   ];
 
   // ── Conversas pendentes (sobrevivem a recarregar a página) ──
@@ -43,7 +44,7 @@
   const titles = {
     inicio: ['Início', 'Área do aluno · visão geral'],
     modulos: ['Módulos de Aula', 'Trilha completa do curso'],
-    videos: ['Biblioteca de Vídeos', 'Assista online ou baixe para offline'],
+    videos: ['Aulas em Vídeo', 'Assista às aulas por tópico'],
     exercicios: ['Exercícios & Simulados', 'Teste seus conhecimentos'],
     chat: ['Área de Conversação', 'Chat em tempo real entre alunos'],
     perfil: ['Meu Perfil', 'Personalize sua conta'],
@@ -178,6 +179,21 @@
       (exItems ? '<div class="glass card"><div class="card-title">Simulados do módulo</div><div class="exercise-grid" style="margin-top:14px">' + exItems + '</div></div>' : '');
   }
 
+  // ── Helper: extrai ID do YouTube ──
+  function ytId(url) {
+    if (!url) return '';
+    const m = String(url).match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{11})/);
+    return m ? m[1] : '';
+  }
+  function ytEmbed(url) {
+    const id = ytId(url);
+    return id ? 'https://www.youtube.com/embed/' + id : url;
+  }
+  function ytThumb(url) {
+    const id = ytId(url);
+    return id ? 'https://img.youtube.com/vi/' + id + '/mqdefault.jpg' : '';
+  }
+
   // ── Vídeos ──
   function thumbCss(i) {
     return 'background:' + gradThumb(i).background.replace(/\n/g, ' ');
@@ -211,20 +227,22 @@
       grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">' + icon('search', 28) + '</div><b>Nenhuma videoaula encontrada</b><span>Tente outra busca ou filtro.</span></div>';
       return;
     }
-    grid.innerHTML = list.map((v, i) =>
-      '<div class="glass vcard">' +
-      '<div class="vthumb" style="' + thumbCss(i) + '" onclick="openVideo(\'' + v.id + '\')">' + icon('play', 40) +
+    grid.innerHTML = list.map((v, i) => {
+      const thumb = ytThumb(v.url);
+      const thumbStyle = thumb ? 'background-image:url(' + thumb + ');background-size:cover;background-position:center' : thumbCss(i);
+      return '<div class="glass vcard">' +
+      '<div class="vthumb" style="' + thumbStyle + '" onclick="openVideo(\'' + v.id + '\')">' + icon('play', 40) +
       '<span class="vdur">' + escapeHtml(v.duration) + '</span></div>' +
       '<div class="vbody">' +
       '<span class="chip">' + escapeHtml(v.module) + '</span>' +
       '<h4 onclick="openVideo(\'' + v.id + '\')">' + escapeHtml(v.title) + '</h4>' +
       '<p>' + escapeHtml(v.description) + '</p>' +
-      '<div class="vmeta"><span>' + escapeHtml(v.duration) + '</span><span>·</span><span>' + (300 + i * 57) + ' alunos</span></div>' +
+      '<div class="vmeta"><span>' + escapeHtml(v.duration) + '</span></div>' +
       '<div class="vactions">' +
       '<button class="btn btn-primary btn-sm" onclick="openVideo(\'' + v.id + '\')">' + icon('play', 14) + ' Assistir</button>' +
-      '<a class="btn btn-ghost btn-sm" href="' + escapeHtml(v.url) + '" download target="_blank" rel="noopener">' + icon('download', 14) + ' Download</a>' +
-      '</div></div></div>'
-    ).join('');
+      '<a class="btn btn-ghost btn-sm" href="' + escapeHtml(v.url) + '" target="_blank" rel="noopener">' + icon('play', 14) + ' YouTube</a>' +
+      '</div></div></div>';
+    }).join('');
   }
 
   // ── Player ──
@@ -240,9 +258,9 @@
       '<h3>' + escapeHtml(v.title) + '</h3>' +
       '<p class="modal-sub" style="margin-bottom:16px">' + escapeHtml(v.description) + '</p>' +
       '<div class="player-wrap">' +
-      '<div class="player-stage"><video src="' + url + '" controls autoplay preload="metadata"></video>' +
+      '<div class="player-stage"><iframe src="' + ytEmbed(url) + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="width:100%;aspect-ratio:16/9;border-radius:16px;background:#000"></iframe>' +
       '<div style="display:flex;gap:10px;margin-top:14px">' +
-      '<a class="btn btn-primary btn-sm" href="' + url + '" download target="_blank" rel="noopener">' + icon('download', 14) + ' Baixar para offline</a>' +
+      '<a class="btn btn-primary btn-sm" href="' + url + '" target="_blank" rel="noopener">' + icon('play', 14) + ' Abrir no YouTube</a>' +
       '<button class="btn btn-ghost btn-sm" onclick="markWatched(\'' + v.id + '\')">✓ Marcar como concluída</button>' +
       '</div></div>' +
       '<div><div class="card-title" style="margin-bottom:10px">Aulas relacionadas</div><div class="related-list">' +

@@ -1,45 +1,7 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const multer = require('multer');
 const db = require('../db');
 
 const router = express.Router();
-
-// ---------- Upload de vídeos (do dispositivo do admin) ----------
-const UPLOAD_DIR = path.join(__dirname, '..', '..', 'public', 'uploads', 'videos');
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-
-const VIDEO_EXT_RE = /\.(mp4|webm|mov|m4v|mkv|avi|ogv|mpeg|mpg|3gp)$/i;
-const VIDEO_MIME_RE = /^video\//;
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
-  filename: (req, file, cb) => {
-    const ext = (path.extname(file.originalname || '').toLowerCase()) || '.mp4';
-    cb(null, 'video-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + ext);
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // até 2GB
-  fileFilter: (req, file, cb) => {
-    if (VIDEO_MIME_RE.test(file.mimetype) || VIDEO_EXT_RE.test(file.originalname || '')) return cb(null, true);
-    cb(new Error('O arquivo enviado não é um vídeo (MP4, WebM, MOV, MKV, AVI).'));
-  },
-});
-
-function removeUploadedFile(url) {
-  try {
-    if (!url || !String(url).startsWith('/uploads/videos/')) return;
-    // resolve o caminho e garante que o arquivo fica DENTRO do diretório de upload
-    const target = path.resolve(path.join(__dirname, '..', '..', 'public', String(url).replace(/^\//, '')));
-    if (target.startsWith(path.resolve(UPLOAD_DIR)) && fs.existsSync(target)) {
-      fs.unlinkSync(target);
-    }
-  } catch (e) { /* arquivo já removido ou sem permissão */ }
-}
 
 async function requireAdmin(req, res, next) {
   try {
@@ -116,39 +78,21 @@ router.delete('/whitelist/:id', requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ---------- Vídeos (CRUD + upload) ----------
-router.post('/videos/upload', requireAdmin, (req, res) => {
-  upload.single('file')(req, res, (err) => {
-    if (err) {
-      const msg = err.code === 'LIMIT_FILE_SIZE'
-        ? 'O vídeo é muito grande (máximo 2GB).'
-        : (err.message || 'Falha ao enviar o vídeo.');
-      return res.status(400).json({ error: msg });
-    }
-    if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo recebido.' });
-    res.status(201).json({
-      url: '/uploads/videos/' + req.file.filename,
-      name: req.file.originalname,
-      size: req.file.size,
-    });
-  });
-});
-
+// ---------- Vídeos (CRUD via YouTube) ----------
 router.post('/videos', requireAdmin, async (req, res) => {
   const { title, description, module: mod, url, duration, emoji } = req.body || {};
   if (!title || !String(title).trim()) return res.status(400).json({ error: 'Título obrigatório.' });
   const video = await db.get().createVideo({
     title: String(title).trim(), description: String(description || '').trim(),
     module: String(mod || 'Geral').trim(), url: String(url || '').trim(),
-    duration: String(duration || '').trim(), emoji: String(emoji || ''),
+    duration: String(duration || '').trim(), emoji: '',
   });
   res.status(201).json(video);
 });
 
 router.put('/videos/:id', requireAdmin, async (req, res) => {
   const store = db.get();
-  const { title, description, module: mod, url, duration, emoji } = req.body || {};
-  const prev = await store.getVideo(req.params.id);
+  const { title, description, module: mod, url, duration } = req.body || {};
   const video = await store.updateVideo(req.params.id, {
     title: title !== undefined ? String(title).trim() : undefined,
     description: description !== undefined ? String(description).trim() : undefined,
@@ -158,20 +102,11 @@ router.put('/videos/:id', requireAdmin, async (req, res) => {
     emoji: emoji !== undefined ? String(emoji).trim() : undefined,
   });
   if (!video) return res.status(404).json({ error: 'Vídeo não encontrado.' });
-  // remove o arquivo antigo se o vídeo local foi substituído
-  if (prev && url !== undefined && prev.url !== video.url && String(prev.url).startsWith('/uploads/videos/')) {
-    removeUploadedFile(prev.url);
-  }
   res.json(video);
 });
 
 router.delete('/videos/:id', requireAdmin, async (req, res) => {
-  const store = db.get();
-  const video = await store.getVideo(req.params.id);
-  await store.deleteVideo(req.params.id);
-  if (video && String(video.url).startsWith('/uploads/videos/')) {
-    removeUploadedFile(video.url);
-  }
+  await db.get().deleteVideo(req.params.id);
   res.json({ ok: true });
 });
 

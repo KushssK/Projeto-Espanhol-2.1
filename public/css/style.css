@@ -1036,3 +1036,28 @@ body {
 /* ── Evitar overflow horizontal ─── */
 iframe { max-width: 100%; }
 table { display: block; overflow-x: auto; }
+
+/* ── Visualização de Senha (Olhinho) ── */
+.input-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.pwd-toggle {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  z-index: 5;
+}
+.pwd-toggle:hover {
+  color: var(--text);
+}
+

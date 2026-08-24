@@ -214,6 +214,9 @@
           <div class="input-icon-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/></svg>
             <input id="loginPassword" type="password" placeholder="••••••••" required>
+            <button type="button" class="pwd-toggle" onclick="togglePasswordVisibility('loginPassword', this)" title="Mostrar/ocultar senha" aria-label="Mostrar senha">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
           </div>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
@@ -278,6 +281,9 @@
           <div class="input-icon-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/></svg>
             <input id="regPassword" type="password" placeholder="mínimo 6 caracteres" required minlength="6">
+            <button type="button" class="pwd-toggle" onclick="togglePasswordVisibility('regPassword', this)" title="Mostrar/ocultar senha" aria-label="Mostrar senha">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
           </div>
           <span class="hint">Sua data de nascimento e e-mail ficarão fixos no seu perfil.</span>
         </div>
@@ -301,6 +307,9 @@
           <div class="input-icon-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/></svg>
             <input id="admLoginPassword" type="password" placeholder="••••••••" required>
+            <button type="button" class="pwd-toggle" onclick="togglePasswordVisibility('admLoginPassword', this)" title="Mostrar/ocultar senha" aria-label="Mostrar senha">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
           </div>
         </div>
         <button class="btn btn-primary btn-block" type="submit" id="admLoginBtn">Entrar no painel</button>
@@ -330,7 +339,13 @@
         </div>
         <div class="field">
           <label for="admPassword">Senha</label>
-          <input id="admPassword" type="password" placeholder="mínimo 6 caracteres" required minlength="6">
+          <div class="input-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/></svg>
+            <input id="admPassword" type="password" placeholder="mínimo 6 caracteres" required minlength="6">
+            <button type="button" class="pwd-toggle" onclick="togglePasswordVisibility('admPassword', this)" title="Mostrar/ocultar senha" aria-label="Mostrar senha">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
         </div>
         <button class="btn btn-primary btn-block" type="submit" id="admBtn">Cadastrar como administrador</button>
         <p style="text-align:center;margin-top:16px;font-size:13px;color:var(--text-faint)">

@@ -4,8 +4,16 @@
     window.location.href = '/index.html';
     return;
   }
-  const me = API.user;
-  const MODULES = ['Conversação', 'Cultura Hispânica', 'Dicas de Aprendizagem', 'Expressões e Girias do Cotidiano', 'Gramática', 'Leitura e Compreensão de Texto', 'Pronúncia', 'Vocabulário', 'Geral'];
+  const MODULES = [
+    'Conversação',
+    'Cultura Hispânica',
+    'Dicas de Aprendizagem',
+    'Expressões e Gírias do Cotidiano',
+    'Gramática',
+    'Leitura e Compreensão de Texto',
+    'Pronúncia',
+    'Vocabulário',
+  ];
 
   const state = {
     users: [], videos: [], exercises: [], whitelist: [], stats: null,

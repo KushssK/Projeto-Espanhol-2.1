@@ -73,7 +73,6 @@
   // ─── Etapa do código (2º fator) ───
   function showCodePane(data, email) {
     currentTab = 'code';
-    pendingAuth = { email, password: pendingAuth ? pendingAuth.password : '' };
     document.getElementById('authTabs').style.display = 'none';
     showOnlyPane('codePane');
     renderTitle();
@@ -100,7 +99,17 @@
     const link = document.getElementById('resendLink');
     link.disabled = true;
     try {
-      const data = await req.post('/api/auth/send-code', { email: pendingAuth.email, password: pendingAuth.password });
+      let url = '/api/auth/send-code';
+      let body = { email: pendingAuth.email, password: pendingAuth.password };
+      if (pendingAuth.action === 'register_aluno') {
+        url = '/api/auth/register-send-code';
+        body = pendingAuth.payload;
+      } else if (pendingAuth.action === 'register_admin') {
+        url = '/api/auth/admin/register-send-code';
+        body = pendingAuth.payload;
+      }
+
+      const data = await req.post(url, body);
       if (data.devCode) {
         const hint = document.getElementById('codeDevHint');
         hint.style.display = '';
@@ -176,7 +185,7 @@
     btn.disabled = true; btn.textContent = 'Enviando código…';
     try {
       const data = await req.post('/api/auth/send-code', { email, password });
-      pendingAuth = { email, password };
+      pendingAuth = { email, password, action: 'login' };
       showCodePane(data, email);
       toast('Código enviado para ' + email + '!', 'success');
     } catch (err) {
@@ -206,47 +215,48 @@
     );
   });
 
-  // ─── Cadastro aluno ───
+  // ─── Cadastro aluno (envia código por e-mail para confirmar) ───
   document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('regBtn');
-    btn.disabled = true; btn.textContent = 'Criando conta…';
+    btn.disabled = true; btn.textContent = 'Enviando código…';
+    const payload = {
+      username: document.getElementById('regUsername').value.trim(),
+      dob: document.getElementById('regDob').value,
+      email: document.getElementById('regEmail').value.trim(),
+      password: document.getElementById('regPassword').value,
+    };
     try {
-      const data = await req.post('/api/auth/register', {
-        username: document.getElementById('regUsername').value.trim(),
-        dob: document.getElementById('regDob').value,
-        email: document.getElementById('regEmail').value.trim(),
-        password: document.getElementById('regPassword').value,
-      });
-      API.token = data.token;
-      API.user = data.user;
-      toast('Conta criada! Boa jornada, ' + data.user.username + '!', 'success');
-      setTimeout(() => { window.location.href = '/dashboard.html'; }, 450);
+      const data = await req.post('/api/auth/register-send-code', payload);
+      pendingAuth = { email: payload.email, action: 'register_aluno', payload };
+      showCodePane(data, payload.email);
+      toast('Código enviado para ' + payload.email + '!', 'success');
     } catch (err) {
       toast(err.message, 'error');
+    } finally {
       btn.disabled = false; btn.textContent = 'Criar minha conta grátis';
     }
   });
 
-  // ─── Cadastro admin ───
+  // ─── Cadastro admin (envia código por e-mail para confirmar) ───
   document.getElementById('adminForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('admBtn');
-    btn.disabled = true; btn.textContent = 'Verificando whitelist…';
+    btn.disabled = true; btn.textContent = 'Verificando e enviando código…';
+    const payload = {
+      username: document.getElementById('admUsername').value.trim(),
+      email: document.getElementById('admEmail').value.trim(),
+      cpf: document.getElementById('admCpf').value.trim(),
+      password: document.getElementById('admPassword').value,
+    };
     try {
-      const data = await req.post('/api/auth/admin/register', {
-        username: document.getElementById('admUsername').value.trim(),
-        email: document.getElementById('admEmail').value.trim(),
-        cpf: document.getElementById('admCpf').value.trim(),
-        password: document.getElementById('admPassword').value,
-      });
-      API.token = data.token;
-      data.user.role = 'admin';
-      API.user = data.user;
-      toast('Admin cadastrado! Bem-vindo ao painel.', 'success');
-      setTimeout(() => { window.location.href = '/admin.html'; }, 450);
+      const data = await req.post('/api/auth/admin/register-send-code', payload);
+      pendingAuth = { email: payload.email, action: 'register_admin', payload };
+      showCodePane(data, payload.email);
+      toast('Código enviado para ' + payload.email + '!', 'success');
     } catch (err) {
       toast(err.message, 'error');
+    } finally {
       btn.disabled = false; btn.textContent = 'Cadastrar como administrador';
     }
   });

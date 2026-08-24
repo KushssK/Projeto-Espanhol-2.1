@@ -1,4 +1,4 @@
-// Códigos de acesso ao login (6 dígitos), mantidos em memória.
+// Códigos de acesso ao login e cadastro (6 dígitos), mantidos em memória.
 // Cada código: expira em 10 minutos, permite 5 tentativas e pode ser
 // reenviado após 30 segundos. Após a validação (certa ou esgotada) é removido.
 const crypto = require('crypto');
@@ -12,8 +12,8 @@ function keyOf(kind, email) {
   return kind + ':' + String(email).toLowerCase();
 }
 
-// Gera (ou reenvia) um código. Retorna { cooldown:false, code } ou { cooldown:true, wait }.
-function generate(kind, email) {
+// Gera (ou reenvia) um código. Opcionalmente armazena dados adicionais (payload de cadastro).
+function generate(kind, email, data = null) {
   const key = keyOf(kind, email);
   const prev = CODES.get(key);
   if (prev && Date.now() - prev.sentAt < RESEND_MS) {
@@ -21,13 +21,13 @@ function generate(kind, email) {
   }
   const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
   CODES.set(key, {
-    code, kind, email: String(email).toLowerCase(),
+    code, kind, email: String(email).toLowerCase(), data,
     expiresAt: Date.now() + TTL, attempts: 0, sentAt: Date.now(),
   });
   return { cooldown: false, code };
 }
 
-// Valida o código informado. Retorna { ok:true } ou { ok:false, error }.
+// Valida o código informado. Retorna { ok:true, kind, data } ou { ok:false, error }.
 function verify(kind, email, code) {
   const key = keyOf(kind, email);
   const entry = CODES.get(key);
@@ -45,14 +45,13 @@ function verify(kind, email, code) {
     return { ok: false, error: 'Código incorreto.' };
   }
   CODES.delete(key);
-  return { ok: true, kind: entry.kind };
+  return { ok: true, kind: entry.kind, data: entry.data };
 }
 
-// Valida procurando nas duas tabelas (aluno/admin) — robusto ao tipo de conta.
-// Retorna { ok:true, kind } ou { ok:false, error }.
+// Valida procurando nas quatro modalidades (aluno, admin, register_aluno, register_admin).
 function verifyAny(email, code) {
   const em = String(email).toLowerCase();
-  for (const kind of ['aluno', 'admin']) {
+  for (const kind of ['aluno', 'admin', 'register_aluno', 'register_admin']) {
     if (CODES.has(keyOf(kind, em))) {
       const r = verify(kind, em, code);
       if (r.ok) r.kind = kind;
@@ -65,3 +64,4 @@ function verifyAny(email, code) {
 function clearAll() { CODES.clear(); }
 
 module.exports = { generate, verify, verifyAny, clearAll };
+

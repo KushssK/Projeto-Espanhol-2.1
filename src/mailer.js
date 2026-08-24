@@ -1,4 +1,4 @@
-// Envio de e-mails transacionais (código de acesso ao login).
+// Envio de e-mails transacionais (código de acesso ao login e cadastro).
 // Configuração via variáveis de ambiente:
 //   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, SMTP_SECURE
 // Sem SMTP configurado, o código é registrado no console e devolvido na
@@ -6,44 +6,65 @@
 const nodemailer = require('nodemailer');
 
 function isSmtpConfigured() {
-  return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  const host = (process.env.SMTP_HOST || '').trim();
+  const user = (process.env.SMTP_USER || '').trim().replace(/^["']|["']$/g, '');
+  const pass = (process.env.SMTP_PASS || '').trim().replace(/^["']|["']$/g, '');
+  return !!(host && user && pass);
 }
 
 let transporter = null;
 function getTransporter() {
   if (transporter) return transporter;
+  const host = (process.env.SMTP_HOST || '').trim();
+  const port = Number(process.env.SMTP_PORT || 587);
+  const secure = String(process.env.SMTP_SECURE).trim() === 'true' || port === 465;
+  const user = (process.env.SMTP_USER || '').trim().replace(/^["']|["']$/g, '');
+  const pass = (process.env.SMTP_PASS || '').trim().replace(/^["']|["']$/g, '');
+
   transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: String(process.env.SMTP_SECURE) === 'true',
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    host,
+    port,
+    secure,
+    auth: { user, pass },
+    tls: {
+      rejectUnauthorized: false,
+    },
   });
   return transporter;
 }
 
-const FROM = process.env.SMTP_FROM || '"Construindo Saberes" <no-reply@construindosaberes.com>';
+function getFrom() {
+  const fromEnv = process.env.SMTP_FROM || process.env.SMTP_USER;
+  if (!fromEnv) return '"Construindo Saberes" <no-reply@construindosaberes.com>';
+  return fromEnv.trim().replace(/^["']|["']$/g, '');
+}
 
 /**
- * Envia o código de acesso para o e-mail cadastrado.
- * Retorna { mode: 'smtp' | 'dev' } — em 'dev' o código também aparece no
- * console do servidor e deve ser exibido pela interface para testes.
+ * Envia o código de acesso para o e-mail.
+ * Retorna { mode: 'smtp' | 'dev' }
  */
 async function sendAuthCode(email, code) {
   const mode = isSmtpConfigured() ? 'smtp' : 'dev';
   if (mode === 'smtp') {
-    await getTransporter().sendMail({
-      from: FROM,
-      to: email,
-      subject: 'Seu código de acesso — Construindo Saberes',
-      text: `Seu código de acesso é ${code}. Ele expira em 10 minutos.\n\nSe não foi você quem pediu, pode ignorar este e-mail.`,
-      html:
-        '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px;background:#0b0518;border-radius:18px;color:#f5f1ff">' +
-        '<div style="font-size:15px;font-weight:800;margin-bottom:18px">Construindo Saberes — Espanhol</div>' +
-        '<p style="font-size:14px;line-height:1.6;color:#b3a6d9">Use o código abaixo para concluir o seu acesso. Ele expira em <b style="color:#f5f1ff">10 minutos</b>.</p>' +
-        '<div style="display:inline-block;padding:14px 26px;margin:14px 0;border-radius:12px;background:linear-gradient(135deg,#8b5cf6,#e879f9);font-size:26px;font-weight:800;letter-spacing:6px;color:#fff">' + code + '</div>' +
-        '<p style="font-size:12.5px;color:#8779ad">Se não foi você quem pediu, ignore este e-mail.</p>' +
-        '</div>',
-    });
+    try {
+      await getTransporter().sendMail({
+        from: getFrom(),
+        to: email,
+        subject: 'Seu código de acesso — Construindo Saberes',
+        text: `Seu código de acesso é ${code}. Ele expira em 10 minutos.\n\nSe não foi você quem pediu, pode ignorar este e-mail.`,
+        html:
+          '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px;background:#0b0518;border-radius:18px;color:#f5f1ff">' +
+          '<div style="font-size:15px;font-weight:800;margin-bottom:18px">Construindo Saberes — Espanhol</div>' +
+          '<p style="font-size:14px;line-height:1.6;color:#b3a6d9">Use o código abaixo para concluir o seu acesso. Ele expira em <b style="color:#f5f1ff">10 minutos</b>.</p>' +
+          '<div style="display:inline-block;padding:14px 26px;margin:14px 0;border-radius:12px;background:linear-gradient(135deg,#8b5cf6,#e879f9);font-size:26px;font-weight:800;letter-spacing:6px;color:#fff">' + code + '</div>' +
+          '<p style="font-size:12.5px;color:#8779ad">Se não foi você quem pediu, ignore este e-mail.</p>' +
+          '</div>',
+      });
+    } catch (err) {
+      console.error('[mailer] Erro ao enviar e-mail:', err);
+      transporter = null; // Reinicia o transporter para tentar conexão limpa no próximo envio
+      throw new Error((err && err.message) ? err.message : 'Falha na conexão SMTP.');
+    }
   } else {
     console.log('[mailer] Código de acesso para ' + email + ': ' + code + '  (SMTP não configurado — modo dev)');
   }
@@ -51,3 +72,4 @@ async function sendAuthCode(email, code) {
 }
 
 module.exports = { sendAuthCode, isSmtpConfigured };
+

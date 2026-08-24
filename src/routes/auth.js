@@ -21,6 +21,38 @@ function validatePassword(pw) {
 }
 
 // ---------- Alunos ----------
+// ---------- Alunos ----------
+router.post('/register-send-code', async (req, res) => {
+  try {
+    const { username, dob, email, password } = req.body || {};
+    const store = db.get();
+
+    const em = String(email || '').trim().toLowerCase();
+    const name = String(username || '').trim();
+    const errs = [];
+    if (!/^[A-Za-z0-9_.]{3,20}$/.test(name)) errs.push('Username deve ter de 3 a 20 caracteres (letras, números, _ ou .).');
+    if (!EMAIL_RE.test(em)) errs.push('E-mail inválido.');
+    if (!dob) errs.push('Informe a data de nascimento.');
+    const pwErr = validatePassword(password);
+    if (pwErr) errs.push(pwErr);
+    if (errs.length) return res.status(400).json({ error: errs.join(' ') });
+
+    if (await store.getUserByEmail(em)) return res.status(409).json({ error: 'Este e-mail já está cadastrado. Faça login.' });
+    if (await store.getAdminByEmail(em)) return res.status(409).json({ error: 'Este e-mail pertence a um administrador.' });
+
+    const sent = authCodes.generate('register_aluno', em, { username: name, dob, email: em, password });
+    if (sent.cooldown) {
+      return res.status(429).json({ error: 'Aguarde ' + sent.wait + 's para reenviar o código.', retryAfter: sent.wait });
+    }
+    const result = await sendAuthCode(em, sent.code);
+    const isProd = process.env.NODE_ENV === 'production';
+    res.json({ sent: true, kind: 'register_aluno', mode: result.mode, devCode: result.mode === 'dev' && !isProd ? sent.code : undefined, expiresIn: 600 });
+  } catch (e) {
+    console.error('[register-send-code error]', e);
+    res.status(500).json({ error: 'Erro ao enviar o código para o e-mail: ' + (e.message || e) });
+  }
+});
+
 router.post('/register', async (req, res) => {
   try {
     const { username, dob, email, password } = req.body || {};
@@ -91,13 +123,12 @@ router.post('/send-code', async (req, res) => {
     const isProd = process.env.NODE_ENV === 'production';
     res.json({ sent: true, kind, mode: result.mode, devCode: result.mode === 'dev' && !isProd ? sent.code : undefined, expiresIn: 600 });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Erro ao enviar o código de acesso.' });
+    console.error('[send-code error]', e);
+    res.status(500).json({ error: 'Erro ao enviar o código de acesso: ' + (e.message || e) });
   }
 });
 
-// Etapa 2: confirma o código e emite o token (login concluído).
-// A verificação descobre sozinha se o e-mail é de aluno ou admin (verifyAny).
+// Etapa 2: confirma o código e conclui o cadastro ou login.
 router.post('/verify-code', async (req, res) => {
   try {
     const { email, code } = req.body || {};
@@ -105,12 +136,30 @@ router.post('/verify-code', async (req, res) => {
     const store = db.get();
     const check = authCodes.verifyAny(em, code);
     if (!check.ok) return res.status(401).json({ error: check.error });
+
+    if (check.kind === 'register_aluno') {
+      const p = check.data || {};
+      const { salt, hash } = hashPassword(p.password);
+      const token = newToken();
+      const user = await store.createUser({ username: p.username, email: em, dob: p.dob, salt, hash, token });
+      return res.json({ token, user: publicUser(user) });
+    }
+
+    if (check.kind === 'register_admin') {
+      const p = check.data || {};
+      const { salt, hash } = hashPassword(p.password);
+      const token = newToken();
+      const admin = await store.createAdmin({ username: p.username, email: em, cpf: p.cpf, salt, hash, token });
+      return res.json({ token, user: publicAdmin(admin), role: 'admin' });
+    }
+
     if (check.kind === 'admin') {
       const admin = await store.getAdminByEmail(em);
       const token = newToken();
       const updated = await store.updateAdmin(admin.id, { token });
       return res.json({ token, user: publicAdmin(updated), role: 'admin' });
     }
+
     const user = await store.getUserByEmail(em);
     const token = newToken();
     const updated = await store.updateUser(user.id, { token });
@@ -161,6 +210,46 @@ router.patch('/profile', async (req, res) => {
 });
 
 // ---------- Admins ----------
+router.post('/admin/register-send-code', async (req, res) => {
+  try {
+    const { username, email, cpf, password } = req.body || {};
+    const store = db.get();
+    const em = String(email || '').trim().toLowerCase();
+    const name = String(username || '').trim();
+
+    const errs = [];
+    if (!/^[A-Za-z0-9_.]{3,20}$/.test(name)) errs.push('Username inválido (3 a 20 caracteres).');
+    if (!EMAIL_RE.test(em)) errs.push('E-mail inválido.');
+    if (!/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(String(cpf || '').trim())) errs.push('CPF inválido. Use o formato 000.000.000-00.');
+    const pwErr = validatePassword(password);
+    if (pwErr) errs.push(pwErr);
+    if (errs.length) return res.status(400).json({ error: errs.join(' ') });
+
+    if (await store.getAdminByEmail(em)) return res.status(409).json({ error: 'Já existe um administrador com este e-mail.' });
+    if (await store.getUserByEmail(em)) return res.status(409).json({ error: 'Este e-mail já pertence a uma conta de aluno.' });
+
+    const allowed = await store.whitelistHas(em);
+    const bootstrap = (await store.listAdmins()).length === 0;
+    if (!allowed && !bootstrap) {
+      return res.status(403).json({
+        error: 'E-mail ainda não liberado. Um administrador precisa adicionar seu e-mail na Whitelist do painel para você poder se cadastrar.',
+        whitelistRequired: true,
+      });
+    }
+
+    const sent = authCodes.generate('register_admin', em, { username: name, email: em, cpf: String(cpf).trim(), password });
+    if (sent.cooldown) {
+      return res.status(429).json({ error: 'Aguarde ' + sent.wait + 's para reenviar o código.', retryAfter: sent.wait });
+    }
+    const result = await sendAuthCode(em, sent.code);
+    const isProd = process.env.NODE_ENV === 'production';
+    res.json({ sent: true, kind: 'register_admin', mode: result.mode, devCode: result.mode === 'dev' && !isProd ? sent.code : undefined, expiresIn: 600 });
+  } catch (e) {
+    console.error('[admin/register-send-code error]', e);
+    res.status(500).json({ error: 'Erro ao enviar o código para o e-mail: ' + (e.message || e) });
+  }
+});
+
 router.post('/admin/register', async (req, res) => {
   try {
     const { username, email, cpf, password } = req.body || {};

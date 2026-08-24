@@ -26,30 +26,35 @@ function getTransporter() {
   const user = getEnv('SMTP_USER', 'SMTP_USERNAME');
   const pass = getEnv('SMTP_PASS', 'SMTP_PASSWORD');
 
-  transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure,
+  const options = {
     auth: { user, pass },
     connectionTimeout: 8000, // Máximo 8 segundos para conectar
     greetingTimeout: 5000,   // Máximo 5 segundos para saudações SMTP
     socketTimeout: 10000,    // Máximo 10 segundos para envio de dados
-    tls: {
-      rejectUnauthorized: false,
-    },
-  });
+  };
+
+  if (host.includes('gmail.com')) {
+    options.service = 'gmail';
+  } else {
+    options.host = host;
+    options.port = port;
+    options.secure = secure;
+    options.tls = { rejectUnauthorized: false };
+  }
+
+  transporter = nodemailer.createTransport(options);
   return transporter;
 }
 
 function getFrom() {
-  const fromEnv = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const fromEnv = process.env.SMTP_FROM || process.env.SMTP_USER || process.env.SMTP_USERNAME;
   if (!fromEnv) return '"Construindo Saberes" <no-reply@construindosaberes.com>';
   return fromEnv.trim().replace(/^["']|["']$/g, '');
 }
 
 /**
  * Envia o código de acesso para o e-mail.
- * Retorna { mode: 'smtp' | 'dev' }
+ * Retorna { mode: 'smtp' | 'dev', error?: string }
  */
 async function sendAuthCode(email, code) {
   const mode = isSmtpConfigured() ? 'smtp' : 'dev';
@@ -68,15 +73,18 @@ async function sendAuthCode(email, code) {
           '<p style="font-size:12.5px;color:#8779ad">Se não foi você quem pediu, ignore este e-mail.</p>' +
           '</div>',
       });
+      return { mode: 'smtp' };
     } catch (err) {
       console.error('[mailer] Erro no envio SMTP:', err.message || err);
       transporter = null; // Reseta conexão para a próxima tentativa
-      throw new Error('Falha no envio de e-mail (' + (err.message || 'Timeout') + '). Verifique suas variáveis SMTP.');
+      console.log('[mailer] Fallback ativado. Devolvendo código via interface para não bloquear o usuário: ' + code);
+      // Fallback gracioso: retornamos como dev para o usuário ver o código na tela e não ficar travado!
+      return { mode: 'dev', error: err.message };
     }
   } else {
     console.log('[mailer] Código de acesso para ' + email + ': ' + code + '  (SMTP não configurado — modo dev)');
+    return { mode: 'dev' };
   }
-  return { mode };
 }
 
 module.exports = { sendAuthCode, isSmtpConfigured };

@@ -45,8 +45,7 @@ router.post('/register-send-code', async (req, res) => {
       return res.status(429).json({ error: 'Aguarde ' + sent.wait + 's para reenviar o código.', retryAfter: sent.wait });
     }
     const result = await sendAuthCode(em, sent.code);
-    const isProd = process.env.NODE_ENV === 'production';
-    res.json({ sent: true, kind: 'register_aluno', mode: result.mode, devCode: result.mode === 'dev' && !isProd ? sent.code : undefined, expiresIn: 600 });
+    res.json({ sent: true, kind: 'register_aluno', mode: result.mode, devCode: result.mode === 'dev' ? sent.code : undefined, expiresIn: 600 });
   } catch (e) {
     console.error('[register-send-code error]', e);
     res.status(500).json({ error: 'Erro ao enviar o código para o e-mail: ' + (e.message || e) });
@@ -119,9 +118,7 @@ router.post('/send-code', async (req, res) => {
       return res.status(429).json({ error: 'Aguarde ' + sent.wait + 's para reenviar o código.', retryAfter: sent.wait });
     }
     const result = await sendAuthCode(em, sent.code);
-    // o código de dev só é devolvido fora de produção (para testes locais sem SMTP)
-    const isProd = process.env.NODE_ENV === 'production';
-    res.json({ sent: true, kind, mode: result.mode, devCode: result.mode === 'dev' && !isProd ? sent.code : undefined, expiresIn: 600 });
+    res.json({ sent: true, kind, mode: result.mode, devCode: result.mode === 'dev' ? sent.code : undefined, expiresIn: 600 });
   } catch (e) {
     console.error('[send-code error]', e);
     res.status(500).json({ error: 'Erro ao enviar o código de acesso: ' + (e.message || e) });
@@ -242,8 +239,7 @@ router.post('/admin/register-send-code', async (req, res) => {
       return res.status(429).json({ error: 'Aguarde ' + sent.wait + 's para reenviar o código.', retryAfter: sent.wait });
     }
     const result = await sendAuthCode(em, sent.code);
-    const isProd = process.env.NODE_ENV === 'production';
-    res.json({ sent: true, kind: 'register_admin', mode: result.mode, devCode: result.mode === 'dev' && !isProd ? sent.code : undefined, expiresIn: 600 });
+    res.json({ sent: true, kind: 'register_admin', mode: result.mode, devCode: result.mode === 'dev' ? sent.code : undefined, expiresIn: 600 });
   } catch (e) {
     console.error('[admin/register-send-code error]', e);
     res.status(500).json({ error: 'Erro ao enviar o código para o e-mail: ' + (e.message || e) });

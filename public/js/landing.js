@@ -2,10 +2,10 @@
 (function () {
   const authModal = document.getElementById('authModal');
   const titleEl = document.getElementById('authTitle');
-  let currentTab = 'login';
+  let currentTab = 'login'; // 'login' | 'register' | 'admin_login' | 'admin_register' | 'code'
 
   // estado da etapa do código (retém e-mail/senha apenas em memória, para reenvio)
-  let pendingAuth = null; // { email, password }
+  let pendingAuth = null; // { email, password, action, payload }
 
   // navbar esconde ao rolar para baixo
   const navbar = document.getElementById('navbar');
@@ -21,10 +21,12 @@
     const titles = {
       login: ['<h3>Bem-vindo(a) de volta!</h3><p class="modal-sub">Entre para continuar sua jornada no espanhol.</p>'],
       register: ['<h3>Crie sua conta gratuita</h3><p class="modal-sub">Acesso total a videoaulas, simulados, exercícios e conversa com outros alunos. Sem cartão, sem barreiras.</p>'],
-      admin: ['<h3>Painel administrativo</h3><p class="modal-sub">Área exclusiva para gestão da plataforma.</p>'],
+      admin_login: ['<h3>Painel administrativo</h3><p class="modal-sub">Acesse o painel com suas credenciais de administrador.</p>'],
+      admin_register: ['<h3>Novo administrador</h3><p class="modal-sub">Cadastre-se para gerenciar a plataforma (e-mail liberado na Whitelist).</p>'],
       code: ['<h3>Confirme seu acesso</h3><p class="modal-sub">Digite o código de 6 dígitos enviado para o seu e-mail.</p>'],
     };
-    titleEl.innerHTML = titles[currentTab][0];
+    const t = titles[currentTab] || titles.login;
+    titleEl.innerHTML = t[0];
   }
 
   function showOnlyPane(paneId) {
@@ -35,21 +37,39 @@
   }
 
   function switchTab(tab) {
-    currentTab = tab === 'admin' ? 'admin' : tab;
-    document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
-    const tabMap = { login: 'tab-login', register: 'tab-register' };
-    if (currentTab !== 'admin') document.getElementById(tabMap[currentTab]).classList.add('active');
-    document.getElementById('authTabs').style.display = '';
-    showOnlyPane(currentTab === 'admin' ? 'adminLoginForm' : currentTab === 'register' ? 'registerForm' : 'loginForm');
+    currentTab = tab === 'admin' ? 'admin_login' : tab;
+    const tabLoginBtn = document.getElementById('tab-login');
+    const tabRegBtn = document.getElementById('tab-register');
+    const authTabs = document.getElementById('authTabs');
+
+    if (currentTab === 'code') {
+      authTabs.style.display = 'none';
+      showOnlyPane('codePane');
+    } else {
+      authTabs.style.display = '';
+      const isAdmin = currentTab === 'admin_login' || currentTab === 'admin_register';
+
+      tabLoginBtn.textContent = isAdmin ? 'Entrar (Admin)' : 'Entrar';
+      tabRegBtn.textContent = isAdmin ? 'Criar Conta (Admin)' : 'Criar Conta';
+
+      tabLoginBtn.onclick = () => switchTab(isAdmin ? 'admin_login' : 'login');
+      tabRegBtn.onclick = () => switchTab(isAdmin ? 'admin_register' : 'register');
+
+      tabLoginBtn.classList.toggle('active', currentTab === 'login' || currentTab === 'admin_login');
+      tabRegBtn.classList.toggle('active', currentTab === 'register' || currentTab === 'admin_register');
+
+      if (currentTab === 'login') showOnlyPane('loginForm');
+      else if (currentTab === 'register') showOnlyPane('registerForm');
+      else if (currentTab === 'admin_login') showOnlyPane('adminLoginForm');
+      else if (currentTab === 'admin_register') showOnlyPane('adminForm');
+    }
+
     renderTitle();
   }
 
   // alterna entre entrar / cadastrar na área admin
   window.switchAdminPane = function (mode) {
-    switchTab('admin');
-    document.getElementById('adminForm').style.display = mode === 'register' ? '' : 'none';
-    document.getElementById('adminLoginForm').style.display = mode === 'login' ? '' : 'none';
-    renderTitle();
+    switchTab(mode === 'register' ? 'admin_register' : 'admin_login');
   };
 
   window.openAuth = function (tab) {
@@ -61,7 +81,7 @@
   window.switchTab = switchTab;
 
   window.openAdminAuth = function () {
-    switchTab('admin');
+    switchTab('admin_login');
     authModal.classList.add('open');
   };
 
@@ -78,11 +98,11 @@
     renderTitle();
     document.getElementById('codeEmail').textContent = email;
     document.getElementById('codeInput').value = '';
-    // em modo dev (sem SMTP), o servidor devolve o código para exibição
+    // exibe dica de dev caso o SMTP não esteja configurado no servidor
     const hint = document.getElementById('codeDevHint');
     if (data && data.devCode) {
       hint.style.display = '';
-      hint.innerHTML = 'Modo de desenvolvimento: seu código é <b>' + data.devCode + '</b>. Configure SMTP_HOST/SMTP_USER/SMTP_PASS para envio real por e-mail.';
+      hint.innerHTML = 'Modo de teste: seu código é <b style="font-size:18px;letter-spacing:3px;color:var(--text)">' + data.devCode + '</b>.<br><small style="opacity:0.85">(SMTP não configurado no servidor — digite este código acima para concluir o acesso)</small>';
     } else {
       hint.style.display = 'none';
     }
@@ -90,8 +110,13 @@
   }
 
   window.backToLogin = function () {
+    const prevAction = pendingAuth ? pendingAuth.action : 'login';
     pendingAuth = null;
-    switchTab('login');
+    if (prevAction === 'register_admin' || prevAction === 'admin_login') {
+      switchTab('admin_login');
+    } else {
+      switchTab('login');
+    }
   };
 
   window.resendCode = async function () {

@@ -1,0 +1,186 @@
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  moduleFormat           = "cjs"
+  generatedFileExtension = "ts"
+  importFileExtension    = "js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ============================================================================
+// 1. USUÁRIOS, AUTENTICAÇÃO E STAFF
+// ============================================================================
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  username       String?   @unique
+  passwordHash   String
+  dob            DateTime  // Data de nascimento
+  role           Role      @default(STUDENT)
+  cpfHash        String?   @unique // SHA-256 do CPF (somente staff)
+  avatarUrl      String?
+  isBanned       Boolean   @default(false)
+  isVerified     Boolean   @default(false) // E-mail verificado
+  verificationCode   String?  // Código de verificação numérico
+  verificationExpires DateTime? // Expiração do código (10 min)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relacionamentos
+  progress       UserProgress[]
+  roomMembers    RoomMember[]
+  messages       Message[]
+}
+
+model Whitelist_CPF {
+  cpf   String @id // PK: String contendo os 11 dígitos
+  role  Role   // Qual privilégio automático este CPF concede ao se cadastrar
+}
+
+// ============================================================================
+// 2. CMS DINÂMICO (IDENTIDADE VISUAL DA PLATAFORMA)
+// ============================================================================
+model AppSettings {
+  id         Int      @id @default(1)
+  themeColor String   @default("#7C3AED") // Cor principal para consumo dinâmico do front
+  logoUrl    String?
+  updatedAt  DateTime @updatedAt
+}
+
+// ============================================================================
+// 3. CONTEÚDO CURRICULAR E ORDENAÇÃO
+// ============================================================================
+model Module {
+  id          String   @id @default(uuid())
+  title       String   // Ex: "Conversação", "Vocabulário"
+  description String?
+  orderIndex  Int      @default(0) // Permitirá ordenação customizada (Drag-and-Drop)
+  
+  categories   Category[]
+  lessons      Lesson[]
+  mediaItems   MediaLibrary[]
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  moduleId    String
+  title       String
+  description String?
+  orderIndex  Int      @default(0)
+
+  module      Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lessons     Lesson[]
+}
+
+model Lesson {
+  id          String   @id @default(uuid())
+  moduleId    String
+  categoryId  String?
+  title       String
+  content     String   @db.Text
+  videoUrl    String?  // Link de plataforma terceira (YouTube, Vimeo)
+  orderIndex  Int      @default(0)
+  
+  module      Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  attachments Attachment[]
+  progress    UserProgress[]
+}
+
+model MediaLibrary {
+  id          String    @id @default(uuid())
+  moduleId    String?
+  title       String
+  description String?   @db.Text
+  type        MediaType
+  url         String?   // Arquivo local em /uploads/media
+  videoUrl    String?   // YouTube/Vimeo
+  orderIndex  Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  module      Module?   @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+}
+
+enum MediaType {
+  PDF
+  AUDIO
+  IMAGE
+}
+
+model Attachment {
+  id         String    @id @default(uuid())
+  lessonId   String
+  type       MediaType
+  url        String    // Caminho relativo no storage do servidor local
+  orderIndex Int       @default(0)
+
+  lesson     Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================================
+// 4. PROGRESSO E EXPERIÊNCIA GAMIFICADA
+// ============================================================================
+model UserProgress {
+  userId      String
+  lessonId    String
+  isCompleted Boolean  @default(false)
+  score       Int      @default(0) // Sistema de pontuação inspirado no Duolingo
+  completedAt DateTime?
+
+  user        User     @relation(fields: [userId], references: [id])
+  lesson      Lesson   @relation(fields: [lessonId], references: [id])
+
+  @@id([userId, lessonId])
+}
+
+// ============================================================================
+// 5. CHAT COMUNITÁRIO (TANDEM-LIKE)
+// ============================================================================
+enum RoomType {
+  PRIVATE
+  GROUP
+}
+
+model ChatRoom {
+  id        String   @id @default(uuid())
+  type      RoomType
+  name      String?  // Relevante apenas para grupos comunitários
+  createdAt DateTime @default(now())
+
+  members   RoomMember[]
+  messages  Message[]
+}
+
+model RoomMember {
+  userId     String
+  chatRoomId String
+  joinedAt   DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id])
+  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id])
+
+  @@id([userId, chatRoomId]) // Chave composta
+}
+
+model Message {
+  id         String    @id @default(uuid())
+  chatRoomId String
+  senderId   String
+  content    String?   @db.Text
+  mediaUrl   String?   // Limite 20MB
+  mediaType  MediaType?
+  createdAt  DateTime  @default(now())
+
+  room       ChatRoom  @relation(fields: [chatRoomId], references: [id])
+  sender     User      @relation(fields: [senderId], references: [id])
+}

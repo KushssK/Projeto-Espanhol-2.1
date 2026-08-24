@@ -27,6 +27,8 @@ app.get(/^\/(?!api\/).*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+const { isSmtpConfigured } = require('./src/mailer');
+
 (async () => {
   try {
     await db.init();
@@ -36,7 +38,7 @@ app.get(/^\/(?!api\/).*/, (req, res) => {
       console.log('  Construindo Saberes — Plataforma ativa!');
       console.log('  ➜  http://localhost:' + PORT);
       console.log('  ➜  Admin:  kaikyzen@gmail.com (senha no seed)');
-      console.log('  ➜  Conteúdo vazio — adicione videoaulas e simulados pelo painel');
+      console.log('  ➜  SMTP status: ' + (isSmtpConfigured() ? '✅ ATIVO (' + (process.env.SMTP_HOST || 'smtp.gmail.com') + ')' : '⚠️  NÃO DETECTADO (modo dev ativo)'));
       console.log('──────────────────────────────────────────────');
     });
   } catch (e) {

@@ -91,6 +91,38 @@
     if (m) m.classList.remove('open');
   };
 
+  // Modal de confirmação para sair da conta
+  window.confirmLogout = function (onConfirm) {
+    let modal = document.getElementById('logoutModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'logoutModal';
+      modal.className = 'modal-backdrop';
+      modal.innerHTML = `
+        <div class="modal" style="max-width:400px;text-align:center">
+          <button class="modal-close" onclick="closeModal('logoutModal')">✕</button>
+          <div style="margin-bottom:16px">
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 12px;display:block">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            <h3 style="font-size:20px;font-weight:700;margin-bottom:8px">Sair da conta</h3>
+            <p style="font-size:14px;color:var(--text-faint);line-height:1.5">Tem certeza que deseja sair da sua conta?</p>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:24px">
+            <button class="btn btn-block" type="button" style="background:rgba(255,255,255,0.08);color:var(--text)" onclick="closeModal('logoutModal')">Cancelar</button>
+            <button class="btn btn-primary btn-block" type="button" style="background:var(--danger)" id="confirmLogoutBtn">Sim, sair</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+    document.getElementById('confirmLogoutBtn').onclick = () => {
+      closeModal('logoutModal');
+      if (typeof onConfirm === 'function') onConfirm();
+    };
+    openModal('logoutModal');
+  };
+
   // helpers de campo
   window.gradThumb = function (seed = 0) {
     const hues = [[139, 92, 246], [232, 121, 249], [59, 130, 246], [34, 211, 238], [168, 85, 247]];

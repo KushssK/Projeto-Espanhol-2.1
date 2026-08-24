@@ -654,10 +654,11 @@
   };
 
   window.doLogout = function () {
-    API.logout();
-    try { localStorage.removeItem(PENDING_KEY); } catch (e) { /* ignore */ }
-    // volta para a seção de boas-vindas (hero da landing)
-    window.location.href = '/index.html#inicio';
+    confirmLogout(() => {
+      API.logout();
+      try { localStorage.removeItem(PENDING_KEY); } catch (e) { /* ignore */ }
+      window.location.href = '/index.html#inicio';
+    });
   };
 
   // ── Init ──

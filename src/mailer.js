@@ -5,21 +5,26 @@
 // resposta (modo "dev"), para permitir testar o fluxo localmente.
 const nodemailer = require('nodemailer');
 
+function getEnv(key1, key2) {
+  const v = process.env[key1] || (key2 ? process.env[key2] : '');
+  return String(v || '').trim().replace(/^["']|["']$/g, '');
+}
+
 function isSmtpConfigured() {
-  const host = (process.env.SMTP_HOST || '').trim();
-  const user = (process.env.SMTP_USER || '').trim().replace(/^["']|["']$/g, '');
-  const pass = (process.env.SMTP_PASS || '').trim().replace(/^["']|["']$/g, '');
+  const host = getEnv('SMTP_HOST');
+  const user = getEnv('SMTP_USER', 'SMTP_USERNAME');
+  const pass = getEnv('SMTP_PASS', 'SMTP_PASSWORD');
   return !!(host && user && pass);
 }
 
 let transporter = null;
 function getTransporter() {
   if (transporter) return transporter;
-  const host = (process.env.SMTP_HOST || '').trim();
-  const port = Number(process.env.SMTP_PORT || 587);
+  const host = getEnv('SMTP_HOST');
+  const port = Number(process.env.SMTP_PORT || 465);
   const secure = String(process.env.SMTP_SECURE).trim() === 'true' || port === 465;
-  const user = (process.env.SMTP_USER || '').trim().replace(/^["']|["']$/g, '');
-  const pass = (process.env.SMTP_PASS || '').trim().replace(/^["']|["']$/g, '');
+  const user = getEnv('SMTP_USER', 'SMTP_USERNAME');
+  const pass = getEnv('SMTP_PASS', 'SMTP_PASSWORD');
 
   transporter = nodemailer.createTransport({
     host,

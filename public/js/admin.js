@@ -448,9 +448,10 @@
   };
 
   window.doLogout = function () {
-    API.logout();
-    // volta para a seção de boas-vindas (hero da landing)
-    window.location.href = '/index.html#inicio';
+    confirmLogout(() => {
+      API.logout();
+      window.location.href = '/index.html#inicio';
+    });
   };
 
   // ── Init ──

@@ -10,11 +10,11 @@
   --primary-soft: rgba(124, 58, 237, 0.05);
 
   /* Gamification Colors */
-  --color-success: #58CC02; /* Duolingo Green */
+  --color-success: #58CC02;
   --color-success-hover: #46A302;
-  --color-warning: #FFC800; /* Duolingo Gold */
-  --color-danger: #EA2B2B; /* Duolingo Red */
-  --color-info: #1CB0F6; /* Duolingo Blue */
+  --color-warning: #FFC800;
+  --color-danger: #EA2B2B;
+  --color-info: #1CB0F6;
 
   /* Theme Colors Light */
   --bg-color: #F9FAFC;
@@ -36,6 +36,10 @@
   
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-title: 'Outfit', var(--font-sans);
+  
+  /* Glassmorphism from older repo */
+  --glass-blur: 18px;
+  --glass-saturate: 1.35;
 }
 
 /* Dark Theme overrides class */
@@ -94,12 +98,36 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--primary-color);
 }
 
-/* Custom interactive UI classes */
+/* Glass utility classes */
 .glass {
   background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(var(--glass-saturate));
+  border-radius: var(--radius-md);
+}
+
+.dark .glass-strong {
+  background: rgba(21, 25, 34, 0.85);
+  border-color: rgba(36, 43, 56, 0.6);
+}
+
+/* Gradient text utility */
+.grad-text {
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }
 
 /* 3D Duolingo Button Effect */
@@ -198,7 +226,7 @@ h1, h2, h3, h4, h5, h6 {
     90deg,
     rgba(255, 255, 255, 0) 0%,
     rgba(255, 255, 255, 0.3) 50%,
-    rgba(255, 255, 255, 0) 100-percent
+    rgba(255, 255, 255, 0) 100%
   );
   animation: shine 2s infinite;
 }
@@ -212,8 +240,6 @@ h1, h2, h3, h4, h5, h6 {
 .auth-page-container {
   display: flex;
   min-height: 100vh;
-  /* Fallback para browsers sem color-mix() */
-  background: linear-gradient(135deg, var(--bg-color) 0%, var(--primary-light) 100%);
   background:
     radial-gradient(ellipse 60% 45% at 15% 10%, var(--primary-light) 0%, transparent 60%),
     radial-gradient(ellipse 55% 40% at 85% 90%, var(--primary-light) 0%, transparent 60%),
@@ -244,4 +270,142 @@ h1, h2, h3, h4, h5, h6 {
 
 .input-gamified:focus {
   border-color: var(--primary-color);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Glassmorphism Animated Background - Dark Theme Only
+   ══════════════════════════════════════════════════════════════ */
+
+/* Background scene - only visible in dark theme */
+.bg-scene {
+  display: none;
+}
+
+.dark .bg-scene {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: -3;
+  pointer-events: none;
+  background:
+    radial-gradient(1200px 800px at 15% -10%, rgba(28, 10, 66, 0.8) 0%, transparent 60%),
+    radial-gradient(1000px 700px at 110% 20%, rgba(61, 26, 133, 0.6) 0%, transparent 55%),
+    radial-gradient(900px 900px at 50% 120%, rgba(28, 10, 66, 0.7) 0%, transparent 60%),
+    var(--bg-color);
+  transition: background 0.6s ease;
+}
+
+/* Grid background - only visible in dark theme */
+.bg-grid {
+  display: none;
+}
+
+.dark .bg-grid {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black 30%, transparent 75%);
+}
+
+/* Animated orbs - only visible in dark theme */
+.orb {
+  display: none;
+}
+
+.dark .orb {
+  display: block;
+  position: fixed;
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+  filter: blur(95px);
+  opacity: 0.5;
+  will-change: transform;
+  background: var(--primary-color);
+}
+
+.dark .orb-1 {
+  width: 520px;
+  height: 520px;
+  top: -160px;
+  left: -120px;
+  animation: drift 26s ease-in-out infinite alternate;
+}
+
+.dark .orb-2 {
+  width: 460px;
+  height: 460px;
+  top: 30%;
+  right: -160px;
+  background: #A855F7;
+  animation: drift 32s ease-in-out infinite alternate-reverse;
+}
+
+.dark .orb-3 {
+  width: 380px;
+  height: 380px;
+  bottom: -140px;
+  left: 32%;
+  background: #22d3ee;
+  opacity: 0.28;
+  animation: drift 38s ease-in-out infinite alternate;
+}
+
+@keyframes drift {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(60px, -50px) scale(1.12); }
+  100% { transform: translate(-50px, 40px) scale(0.95); }
+}
+
+/* Light beam effect - only visible in dark theme */
+.light-beam {
+  display: none;
+}
+
+.dark .light-beam {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.35;
+  background:
+    repeating-linear-gradient(115deg, transparent 0 90px, rgba(255, 255, 255, 0.03) 90px 92px);
+  mask-image: linear-gradient(to bottom, black, transparent 80%);
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent 80%);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Accessibility - Reduced Motion
+   ══════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .dark .orb-1,
+  .dark .orb-2,
+  .dark .orb-3 {
+    animation: none;
+  }
+  
+  .progress-bar-fill::after {
+    animation: none;
+  }
+  
+  .card-gamified:hover {
+    transform: none;
+  }
+  
+  .btn-3d {
+    transform: none;
+  }
+  
+  .btn-3d:active {
+    transform: none;
+  }
 }

@@ -18,6 +18,7 @@ function App() {
   const checkAuth = useAuthStore((s) => s.checkAuth)
   const fetchSettings = useThemeStore((s) => s.fetchSettings)
   const isLoading = useAuthStore((s) => s.isLoading)
+  const isDark = useThemeStore((s) => s.isDark)
 
   useEffect(() => {
     fetchSettings()
@@ -36,7 +37,15 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className={`min-h-screen ${isDark ? 'dark' : ''}`}>
+      {/* Glassmorphism animated background */}
+      <div className="bg-scene" />
+      <div className="bg-grid" />
+      <div className="orb orb-1" />
+      <div className="orb orb-2" />
+      <div className="orb orb-3" />
+      <div className="light-beam" />
+
       <Navbar />
       <Routes>
         <Route path="/login" element={<Login />} />

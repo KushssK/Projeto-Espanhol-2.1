@@ -26,6 +26,9 @@ function getTransporter() {
     port,
     secure,
     auth: { user, pass },
+    connectionTimeout: 8000, // Máximo 8 segundos para conectar
+    greetingTimeout: 5000,   // Máximo 5 segundos para saudações SMTP
+    socketTimeout: 10000,    // Máximo 10 segundos para envio de dados
     tls: {
       rejectUnauthorized: false,
     },
@@ -61,9 +64,9 @@ async function sendAuthCode(email, code) {
           '</div>',
       });
     } catch (err) {
-      console.error('[mailer] Erro ao enviar e-mail:', err);
-      transporter = null; // Reinicia o transporter para tentar conexão limpa no próximo envio
-      throw new Error((err && err.message) ? err.message : 'Falha na conexão SMTP.');
+      console.error('[mailer] Erro no envio SMTP:', err.message || err);
+      transporter = null; // Reseta conexão para a próxima tentativa
+      throw new Error('Falha no envio de e-mail (' + (err.message || 'Timeout') + '). Verifique suas variáveis SMTP.');
     }
   } else {
     console.log('[mailer] Código de acesso para ' + email + ': ' + code + '  (SMTP não configurado — modo dev)');

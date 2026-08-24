@@ -215,6 +215,7 @@
       toast('Código enviado para ' + email + '!', 'success');
     } catch (err) {
       toast(err.message, 'error');
+    } finally {
       btn.disabled = false; btn.textContent = btnLabel;
     }
   }

@@ -98,11 +98,17 @@
     renderTitle();
     document.getElementById('codeEmail').textContent = email;
     document.getElementById('codeInput').value = '';
-    // exibe dica de dev caso o SMTP não esteja configurado no servidor
+    // exibe dica de teste caso o SMTP não esteja configurado ou tenha falhado
     const hint = document.getElementById('codeDevHint');
     if (data && data.devCode) {
       hint.style.display = '';
-      hint.innerHTML = 'Modo de teste: seu código é <b style="font-size:18px;letter-spacing:3px;color:var(--text)">' + data.devCode + '</b>.<br><small style="opacity:0.85">(SMTP não configurado no servidor — digite este código acima para concluir o acesso)</small>';
+      let msg = 'Modo de teste: seu código é <b style="font-size:18px;letter-spacing:3px;color:var(--text)">' + data.devCode + '</b>.';
+      if (data.smtpError) {
+        msg += '<br><small style="color:var(--warning)">(SMTP instável: ' + data.smtpError + ' — use o código acima para entrar normalmente)</small>';
+      } else {
+        msg += '<br><small style="opacity:0.85">(SMTP não configurado no servidor — digite este código acima para concluir o acesso)</small>';
+      }
+      hint.innerHTML = msg;
     } else {
       hint.style.display = 'none';
     }

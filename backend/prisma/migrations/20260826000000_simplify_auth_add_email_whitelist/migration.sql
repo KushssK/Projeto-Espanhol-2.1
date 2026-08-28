@@ -1,26 +1,29 @@
--- DropEnum
-DROP TYPE "VerificationPurpose";
+-- Migration: simplify auth, add email whitelist
+-- Fixed order: drop dependent objects BEFORE dropping types
 
--- DropForeignKey
+-- 1. Drop foreign key from VerificationCode (depends on User)
 ALTER TABLE "VerificationCode" DROP CONSTRAINT "VerificationCode_userId_fkey";
 
--- DropTable
+-- 2. Drop VerificationCode table FIRST (its "purpose" column references VerificationPurpose)
 DROP TABLE "VerificationCode";
 
--- DropTable
+-- 3. NOW safe to drop the enum type (no more columns reference it)
+DROP TYPE "VerificationPurpose";
+
+-- 4. Drop Whitelist_CPF (no dependencies on it)
 DROP TABLE "Whitelist_CPF";
 
--- DropIndex
+-- 5. Remove cpfHash from User (drop unique index first)
 DROP INDEX "User_cpfHash_key";
-
--- AlterTable: Remove cpfHash and isVerified from User
 ALTER TABLE "User" DROP COLUMN "cpfHash";
+
+-- 6. Remove isVerified from User
 ALTER TABLE "User" DROP COLUMN "isVerified";
 
--- AlterTable: Add published to Lesson
+-- 7. Add published to Lesson
 ALTER TABLE "Lesson" ADD COLUMN "published" BOOLEAN NOT NULL DEFAULT false;
 
--- CreateTable: WhitelistEmail
+-- 8. Create WhitelistEmail table
 CREATE TABLE "WhitelistEmail" (
     "email" TEXT NOT NULL,
     "role" "Role" NOT NULL,

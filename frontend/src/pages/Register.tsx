@@ -45,7 +45,7 @@ export const Register: React.FC = () => {
       } else {
         const { token, user } = response.data;
         login(token, user);
-        navigate('/');
+        navigate('/dashboard');
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Erro ao criar conta. Verifique os dados fornecidos.');

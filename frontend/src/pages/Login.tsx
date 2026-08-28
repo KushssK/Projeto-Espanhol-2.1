@@ -54,7 +54,7 @@ export const Login: React.FC = () => {
       // Login direto (admin criado via bootstrap — já verificado)
       const { token, user } = data;
       login(token, user);
-      navigate('/');
+      navigate('/dashboard');
     } catch (err: any) {
       const errorData = err.response?.data;
 

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Navbar } from './components/Navbar'
+import { PublicNavbar } from './components/PublicNavbar'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { useAuthStore } from './stores/useAuthStore'
 import { useThemeStore } from './stores/useThemeStore'
+import { LandingPage } from './pages/LandingPage'
 import { Dashboard } from './pages/Dashboard'
 import { LessonView } from './pages/LessonView'
 import { Leaderboard } from './pages/Leaderboard'
@@ -18,6 +20,7 @@ function App() {
   const checkAuth = useAuthStore((s) => s.checkAuth)
   const fetchSettings = useThemeStore((s) => s.fetchSettings)
   const isLoading = useAuthStore((s) => s.isLoading)
+  const user = useAuthStore((s) => s.user)
   const [isDark, setIsDark] = useState(false)
 
   useEffect(() => {
@@ -50,6 +53,10 @@ function App() {
     )
   }
 
+  // Public routes that should show the PublicNavbar
+  const publicPaths = ['/', '/login', '/register', '/verify-email']
+  const isPublicPage = publicPaths.includes(window.location.pathname)
+
   return (
     <div className={`min-h-screen ${isDark ? 'dark' : ''}`}>
       {/* Glassmorphism animated background */}
@@ -60,15 +67,21 @@ function App() {
       <div className="orb orb-3" />
       <div className="light-beam" />
 
-      <Navbar />
+      {/* Show PublicNavbar on landing page, Navbar everywhere else */}
+      {isPublicPage && !user ? <PublicNavbar /> : <Navbar />}
+
       <Routes>
+        {/* Landing Page — pública */}
+        <Route path="/" element={<LandingPage />} />
+
+        {/* Auth pages */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
 
         {/* Rotas protegidas (qualquer usuário autenticado) */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/lessons/:id" element={<LessonView />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/chat" element={<CommunityChat />} />

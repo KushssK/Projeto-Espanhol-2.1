@@ -33,7 +33,7 @@ export const Navbar: React.FC = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   const isActive = (path: string) => {
@@ -59,7 +59,7 @@ export const Navbar: React.FC = () => {
 
       {/* Desktop Menu */}
       <div className="hidden md:flex items-center gap-6">
-        <Link to="/" className={`flex items-center gap-2 font-bold transition-colors ${isActive('/')}`} style={{ color: location.pathname === '/' ? themeColor : 'var(--text-muted)' }}>
+        <Link to="/dashboard" className={`flex items-center gap-2 font-bold transition-colors ${isActive('/dashboard')}`} style={{ color: location.pathname === '/dashboard' ? themeColor : 'var(--text-muted)' }}>
           <BookOpen size={18} />
           Módulos
         </Link>
@@ -147,7 +147,7 @@ export const Navbar: React.FC = () => {
       {/* Mobile Menu Panel */}
       {mobileMenuOpen && (
         <div className="absolute top-[72px] left-0 right-0 glass border-b border-[var(--border-color)] flex flex-col p-4 gap-4 md:hidden z-40">
-          <Link to="/" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 font-bold py-2 text-decoration-none" style={{ color: 'var(--text-main)' }}>
+          <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 font-bold py-2 text-decoration-none" style={{ color: 'var(--text-main)' }}>
             <BookOpen size={18} /> Módulos
           </Link>
           <Link to="/leaderboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 font-bold py-2 text-decoration-none" style={{ color: 'var(--text-main)' }}>

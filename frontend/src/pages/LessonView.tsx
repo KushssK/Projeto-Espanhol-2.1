@@ -93,7 +93,7 @@ export const LessonView: React.FC = () => {
     return (
       <div className="max-w-[800px] mx-auto px-4 py-16 text-center">
         <h2 className="text-xl font-extrabold mb-2">Aula não encontrada.</h2>
-        <Link to="/" style={{ color: themeColor }} className="font-bold hover:underline">
+        <Link to="/dashboard" style={{ color: themeColor }} className="font-bold hover:underline">
           Voltar para Módulos
         </Link>
       </div>
@@ -105,7 +105,7 @@ export const LessonView: React.FC = () => {
       {/* Botão Voltar */}
       <div>
         <button 
-          onClick={() => navigate('/')} 
+          onClick={() => navigate('/dashboard')} 
           className="flex items-center gap-2 font-bold hover:opacity-80 cursor-pointer"
           style={{ color: 'var(--text-muted)', border: 'none', background: 'none' }}
         >
@@ -227,7 +227,7 @@ export const LessonView: React.FC = () => {
             </button>
           ) : (
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/dashboard')}
               className="btn-3d font-bold flex items-center gap-2"
               style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}
             >

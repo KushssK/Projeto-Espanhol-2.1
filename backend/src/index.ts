@@ -7,6 +7,7 @@ import { createServer } from 'http';
 import { setupSocket } from './socket';
 import { cleanupExpiredCodes } from './lib/code';
 import { verifyEmailConfig } from './lib/email';
+import { seedWhitelist } from './lib/whitelist-seed';
 
 // Rotas
 import authRoutes from './routes/auth.routes';
@@ -113,6 +114,13 @@ server.listen(port, async () => {
   if (process.env.NODE_ENV === 'production') {
     const emailOk = verifyEmailConfig();
     console.log(emailOk ? '✅ Serviço de e-mail configurado (Resend)' : '⚠️ Serviço de e-mail não configurado — verifique RESEND_API_KEY e RESEND_FROM');
+  }
+
+  // Seed da whitelist (idempotente — seguro em cada restart)
+  try {
+    await seedWhitelist();
+  } catch (err) {
+    console.error('⚠️ Erro ao inicializar whitelist (não bloqueante):', err);
   }
 });
 

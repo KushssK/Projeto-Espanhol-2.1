@@ -1,7 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import { LogOut, X } from 'lucide-react';
-import { useThemeStore } from '../stores/useThemeStore';
-
 interface LogoutModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -13,7 +11,6 @@ interface LogoutModalProps {
  * Exibe antes de deslogar o usuário, evitando logout acidental.
  */
 export const LogoutModal: React.FC<LogoutModalProps> = ({ isOpen, onClose, onConfirm }) => {
-  const { themeColor } = useThemeStore();
   const modalRef = useRef<HTMLDivElement>(null);
 
   // Fechar com Escape

@@ -1,26 +1,19 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 // ============================================================================
-// Transporter Nodemailer — configuração via Environment Variables
+// Resend Client — configuração via Environment Variables
 // ============================================================================
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === 'true', // true para porta 465, false para 587/STARTTLS
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  tls: {
-    // Em produção, sempre validar o certificado TLS
-    rejectUnauthorized: process.env.NODE_ENV === 'production',
-  },
-  // Timeout para não travar em produção
-  connectionTimeout: 10_000,
-  greetingTimeout: 5_000,
-  socketTimeout: 10_000,
-});
+if (!process.env.RESEND_API_KEY) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error(
+      '❌ [EMAIL] RESEND_API_KEY não configurada. ' +
+      'Configure RESEND_API_KEY no Render.'
+    );
+  }
+}
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // ============================================================================
 // Assunto do e-mail baseado na finalidade
@@ -183,10 +176,10 @@ interface SendCodeResult {
 }
 
 /**
- * Envia código de verificação por e-mail.
+ * Envia código de verificação por e-mail via Resend API.
  *
  * Comportamento:
- * - Produção: SMTP obrigatório; se falhar, retorna erro genérico (NUNCA expõe o código).
+ * - Produção: RESEND_API_KEY obrigatória; se falhar, retorna erro genérico (NUNCA expõe o código).
  * - Desenvolvimento: permite log do código no servidor para facilitar testes.
  */
 export async function sendVerificationCode(
@@ -196,13 +189,13 @@ export async function sendVerificationCode(
 ): Promise<SendCodeResult> {
   const isProduction = process.env.NODE_ENV === 'production';
 
-  // Verificar se SMTP está configurado
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+  // Verificar se Resend está configurado
+  if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM) {
     if (isProduction) {
-      // PRODUÇÃO: SMTP obrigatório — registrar erro técnico e retornar erro genérico
+      // PRODUÇÃO: Resend obrigatório — registrar erro técnico e retornar erro genérico
       console.error(
-        '❌ [SMTP] Variáveis de ambiente SMTP não configuradas. ' +
-        'Configure SMTP_HOST, SMTP_USER e SMTP_PASS no Render.'
+        '❌ [EMAIL] Variáveis de ambiente não configuradas. ' +
+        'Configure RESEND_API_KEY e RESEND_FROM no Render.'
       );
       return {
         success: false,
@@ -220,31 +213,27 @@ export async function sendVerificationCode(
   }
 
   try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
-      to: email,
+    const { error } = await resend.emails.send({
+      from: process.env.RESEND_FROM,
+      to: [email],
       subject: getSubject(purpose),
       html: buildHtmlEmail(code, purpose),
       text: buildTextEmail(code, purpose),
-      // Headers para melhor entregabilidade
-      headers: {
-        'X-Mailer': 'ConstruindoSaberes-Auth',
-        'List-Unsubscribe': '<mailto:noreply@construindosaberes.com?subject=unsubscribe>',
-      },
     });
 
-    return { success: true };
-  } catch (error: any) {
-    // PRODUÇÃO: NUNCA expor código ou detalhes técnicos ao cliente
-    console.error(
-      `❌ [SMTP] Falha ao enviar e-mail para ${email}:`,
-      error.message || error
-    );
-
-    // Registrar informações técnicas seguras no servidor (sem expor credenciais)
-    if (error.code) {
-      console.error(`   Código do erro: ${error.code}`);
+    if (error) {
+      console.error(`❌ [EMAIL] Falha ao enviar e-mail para ${email}:`, error.message);
+      return {
+        success: false,
+        error: 'Não foi possível enviar o e-mail de verificação. Tente novamente em alguns instantes.',
+      };
     }
+
+    return { success: true };
+  } catch (error: unknown) {
+    // PRODUÇÃO: NUNCA expor código ou detalhes técnicos ao cliente
+    const message = error instanceof Error ? error.message : 'Erro desconhecido';
+    console.error(`❌ [EMAIL] Falha ao enviar e-mail para ${email}:`, message);
 
     return {
       success: false,
@@ -254,16 +243,17 @@ export async function sendVerificationCode(
 }
 
 /**
- * Verifica se o transporter SMTP está configurado corretamente.
- * Útil para health checks em produção.
+ * Verifica se a configuração do Resend está disponível.
+ * Não envia e-mail — apenas valida se as variáveis de ambiente estão definidas.
  */
-export async function verifySmtpConnection(): Promise<boolean> {
-  try {
-    await transporter.verify();
-    return true;
-  } catch (error: any) {
-    // Em produção, logar apenas mensagem genérica — não expor detalhes de conexão
-    console.error('❌ [SMTP] Falha na verificação de conexão:', error?.message || 'Erro desconhecido');
+export function verifyEmailConfig(): boolean {
+  if (!process.env.RESEND_API_KEY) {
+    console.error('❌ [EMAIL] RESEND_API_KEY não configurada.');
     return false;
   }
+  if (!process.env.RESEND_FROM) {
+    console.error('❌ [EMAIL] RESEND_FROM não configurado.');
+    return false;
+  }
+  return true;
 }

@@ -29,8 +29,6 @@ export const VerifyEmail: React.FC = () => {
   const [cooldown, setCooldown] = useState(0);
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
   const [timeLeft, setTimeLeft] = useState('');
-  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
-
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const { login } = useAuthStore();

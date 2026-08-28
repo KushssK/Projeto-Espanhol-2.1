@@ -1,0 +1,31 @@
+{
+  "short_name": "EspanholRede",
+  "name": "Espanhol em Rede: Conectando Saberes",
+  "description": "Plataforma gratuita de ensino de espanhol com progressão gamificada e comunidade.",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#7C3AED",
+  "background_color": "#F9FAFC",
+  "lang": "pt-BR"
+}

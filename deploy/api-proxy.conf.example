@@ -1,0 +1,13 @@
+# Exemplo: proxy reverso Apache → app Node (porta definida no cPanel)
+# Inclua no VirtualHost do subdomínio api.seudominio.com.br
+
+# ProxyPreserveHost On
+# RequestHeader set X-Forwarded-Proto "https"
+#
+# ProxyPass / http://127.0.0.1:PORTA_NODE/
+# ProxyPassReverse / http://127.0.0.1:PORTA_NODE/
+#
+# RewriteEngine On
+# RewriteCond %{HTTP:Upgrade} websocket [NC]
+# RewriteCond %{HTTP:Connection} upgrade [NC]
+# RewriteRule ^/?(.*) ws://127.0.0.1:PORTA_NODE/$1 [P,L]

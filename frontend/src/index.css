@@ -1,0 +1,411 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  /* Dynamic Primary Color injects here from useThemeStore — fallback Roxo (Violeta) */
+  --primary-color: #7C3AED;
+  --primary-hover: #6D28D9;
+  --primary-light: rgba(124, 58, 237, 0.1);
+  --primary-border: rgba(124, 58, 237, 0.22);
+  --primary-gradient: linear-gradient(135deg, #7C3AED 0%, #A855F7 55%, #C084FC 100%);
+  --primary-soft: rgba(124, 58, 237, 0.05);
+
+  /* Gamification Colors */
+  --color-success: #58CC02;
+  --color-success-hover: #46A302;
+  --color-warning: #FFC800;
+  --color-danger: #EA2B2B;
+  --color-info: #1CB0F6;
+
+  /* Theme Colors Light */
+  --bg-color: #F9FAFC;
+  --panel-bg: #FFFFFF;
+  --border-color: #E5E8EB;
+  --text-main: #3C3C3C;
+  --text-muted: #777777;
+  --text-inverse: #FFFFFF;
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(229, 232, 235, 0.5);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 16px -8px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 20px 40px -15px rgba(0, 0, 0, 0.1);
+  
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-title: 'Outfit', var(--font-sans);
+  
+  /* Glassmorphism from older repo */
+  --glass-blur: 18px;
+  --glass-saturate: 1.35;
+}
+
+/* Dark Theme overrides class */
+.dark {
+  --bg-color: #0B0E14;
+  --panel-bg: #151922;
+  --border-color: #242B38;
+  --text-main: #E2E8F0;
+  --text-muted: #8E9CAE;
+  --text-inverse: #0B0E14;
+  --glass-bg: rgba(21, 25, 34, 0.7);
+  --glass-border: rgba(36, 43, 56, 0.5);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 16px -8px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 20px 40px -15px rgba(0, 0, 0, 0.4);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-title);
+  color: var(--text-main);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
+}
+
+/* Glass utility classes */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(var(--glass-saturate));
+  border-radius: var(--radius-md);
+}
+
+.dark .glass-strong {
+  background: rgba(21, 25, 34, 0.85);
+  border-color: rgba(36, 43, 56, 0.6);
+}
+
+/* Gradient text utility */
+.grad-text {
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* 3D Duolingo Button Effect */
+.btn-3d {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+  border: none;
+  background: var(--btn-bg, var(--primary-color));
+  color: #FFFFFF;
+  box-shadow: 0 4px 0 var(--btn-shadow, var(--primary-hover));
+  transform: translateY(-4px);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  user-select: none;
+  text-decoration: none;
+}
+
+.btn-3d:active {
+  transform: translateY(0px);
+  box-shadow: 0 0px 0 var(--btn-shadow, var(--primary-hover));
+}
+
+.btn-3d.btn-success {
+  --btn-bg: var(--color-success);
+  --btn-shadow: var(--color-success-hover);
+}
+
+.btn-3d.btn-secondary {
+  --btn-bg: #FFFFFF;
+  --btn-shadow: var(--border-color);
+  color: var(--text-main);
+  border: 2px solid var(--border-color);
+  box-shadow: 0 4px 0 var(--border-color);
+}
+.dark .btn-3d.btn-secondary {
+  --btn-bg: var(--panel-bg);
+  --btn-shadow: #2e3747;
+  color: var(--text-main);
+  border: 2px solid var(--border-color);
+  box-shadow: 0 4px 0 #2e3747;
+}
+
+/* Gamified Layouts & Cards */
+.card-gamified {
+  background: var(--panel-bg);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+}
+
+.card-gamified:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-color);
+}
+
+/* Progress bar style */
+.progress-bar-container {
+  width: 100%;
+  height: 16px;
+  background-color: var(--border-color);
+  border-radius: 99px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--primary-gradient);
+  border-radius: 99px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.progress-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shine 2s infinite;
+}
+
+@keyframes shine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Auth Pages Container styling */
+.auth-page-container {
+  display: flex;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 60% 45% at 15% 10%, var(--primary-light) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 40% at 85% 90%, var(--primary-light) 0%, transparent 60%),
+    linear-gradient(135deg, var(--bg-color) 0%, color-mix(in srgb, var(--primary-color) 6%, var(--bg-color)) 100%);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 480px;
+  margin: auto;
+  padding: 40px;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+.input-gamified {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-color);
+  background: var(--panel-bg);
+  color: var(--text-main);
+  font-size: 16px;
+  outline: none;
+  font-family: var(--font-sans);
+  transition: border-color 0.2s ease;
+}
+
+.input-gamified:focus {
+  border-color: var(--primary-color);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Glassmorphism Animated Background - Dark Theme Only
+   ══════════════════════════════════════════════════════════════ */
+
+/* Background scene - only visible in dark theme */
+.bg-scene {
+  display: none;
+}
+
+.dark .bg-scene {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: -3;
+  pointer-events: none;
+  background:
+    radial-gradient(1200px 800px at 15% -10%, rgba(28, 10, 66, 0.8) 0%, transparent 60%),
+    radial-gradient(1000px 700px at 110% 20%, rgba(61, 26, 133, 0.6) 0%, transparent 55%),
+    radial-gradient(900px 900px at 50% 120%, rgba(28, 10, 66, 0.7) 0%, transparent 60%),
+    var(--bg-color);
+  transition: background 0.6s ease;
+}
+
+/* Grid background - only visible in dark theme */
+.bg-grid {
+  display: none;
+}
+
+.dark .bg-grid {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black 30%, transparent 75%);
+}
+
+/* Animated orbs - only visible in dark theme */
+.orb {
+  display: none;
+}
+
+.dark .orb {
+  display: block;
+  position: fixed;
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+  filter: blur(95px);
+  opacity: 0.5;
+  will-change: transform;
+  background: var(--primary-color);
+}
+
+.dark .orb-1 {
+  width: 520px;
+  height: 520px;
+  top: -160px;
+  left: -120px;
+  animation: drift 26s ease-in-out infinite alternate;
+}
+
+.dark .orb-2 {
+  width: 460px;
+  height: 460px;
+  top: 30%;
+  right: -160px;
+  background: #A855F7;
+  animation: drift 32s ease-in-out infinite alternate-reverse;
+}
+
+.dark .orb-3 {
+  width: 380px;
+  height: 380px;
+  bottom: -140px;
+  left: 32%;
+  background: #22d3ee;
+  opacity: 0.28;
+  animation: drift 38s ease-in-out infinite alternate;
+}
+
+@keyframes drift {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(60px, -50px) scale(1.12); }
+  100% { transform: translate(-50px, 40px) scale(0.95); }
+}
+
+/* Light beam effect - only visible in dark theme */
+.light-beam {
+  display: none;
+}
+
+.dark .light-beam {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.35;
+  background:
+    repeating-linear-gradient(115deg, transparent 0 90px, rgba(255, 255, 255, 0.03) 90px 92px);
+  mask-image: linear-gradient(to bottom, black, transparent 80%);
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent 80%);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Accessibility - Reduced Motion
+   ══════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .dark .orb-1,
+  .dark .orb-2,
+  .dark .orb-3 {
+    animation: none;
+  }
+  
+  .progress-bar-fill::after {
+    animation: none;
+  }
+  
+  .card-gamified:hover {
+    transform: none;
+  }
+  
+  .btn-3d {
+    transform: none;
+  }
+  
+  .btn-3d:active {
+    transform: none;
+  }
+}

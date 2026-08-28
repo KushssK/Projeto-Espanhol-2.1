@@ -8,6 +8,6 @@ router.use(authenticateToken, requireAdmin);
 
 router.get('/', listWhitelist);
 router.post('/', addWhitelist);
-router.delete('/:cpf', removeWhitelist);
+router.delete('/:email', removeWhitelist);
 
 export default router;

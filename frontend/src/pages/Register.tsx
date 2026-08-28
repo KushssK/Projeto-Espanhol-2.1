@@ -3,14 +3,13 @@ import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useThemeStore } from '../stores/useThemeStore';
-import { AlertCircle, User, Mail, Lock, Calendar, CreditCard } from 'lucide-react';
+import { AlertCircle, User, Mail, Lock, Calendar } from 'lucide-react';
 
 export const Register: React.FC = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [dob, setDob] = useState('');
-  const [cpf, setCpf] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -30,24 +29,10 @@ export const Register: React.FC = () => {
     }
 
     try {
-      const payload: Record<string, string> = { username, email, password, dob };
-      let endpoint = '/auth/register';
-      const cpfDigits = cpf.replace(/\D/g, '');
-      if (cpfDigits.length === 11) {
-        // Staff: rota dedicada que valida o CPF na whitelist e atribui a role automaticamente
-        payload.cpf = cpfDigits;
-        endpoint = '/auth/register/staff';
-      }
-
-      const response = await api.post(endpoint, payload);
-      const { requiresVerification, email: responseEmail } = response.data;
-      if (requiresVerification) {
-        navigate('/verify-email', { state: { email: responseEmail, fromRegister: true } });
-      } else {
-        const { token, user } = response.data;
-        login(token, user);
-        navigate('/dashboard');
-      }
+      const response = await api.post('/auth/register', { username, email, password, dob });
+      const { token, user } = response.data;
+      login(token, user);
+      navigate('/dashboard');
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } } };
       setError(axiosErr.response?.data?.error || 'Erro ao criar conta. Verifique os dados fornecidos.');
@@ -133,29 +118,11 @@ export const Register: React.FC = () => {
             </div>
           </div>
 
-          <div className="relative flex flex-col gap-1">
-            <label className="text-xs font-bold px-1" style={{ color: 'var(--text-muted)' }}>CPF (OPCIONAL — APENAS PARA STAFF)</label>
-            <div className="relative">
-              <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2" size={20} style={{ color: 'var(--text-muted)' }} />
-              <input
-                type="text"
-                placeholder="000.000.000-00"
-                className="input-gamified"
-                style={{ paddingLeft: '48px' }}
-                value={cpf}
-                onChange={(e) => setCpf(e.target.value)}
-              />
-            </div>
-            <span className="text-[11px] px-1" style={{ color: 'var(--text-muted)' }}>
-              Se o seu CPF estiver na Whitelist de Professores/Admin, você receberá acesso automaticamente.
-            </span>
-          </div>
-
           <button
             type="submit"
             className="btn-3d w-full font-bold mt-2"
             disabled={loading}
-            style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}
+            style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
           >
             {loading ? 'Cadastrando...' : 'Criar minha Conta'}
           </button>

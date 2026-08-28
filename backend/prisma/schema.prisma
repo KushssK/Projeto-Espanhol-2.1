@@ -11,19 +11,13 @@ datasource db {
 }
 
 // ============================================================================
-// 1. USUÁRIOS, AUTENTICAÇÃO E STAFF
+// 1. USUÁRIOS E AUTENTICAÇÃO
 // ============================================================================
+
 enum Role {
   STUDENT
   TEACHER
   ADMIN
-}
-
-// Finalidade do código de verificação
-enum VerificationPurpose {
-  REGISTER
-  LOGIN
-  ADMIN_LOGIN
 }
 
 model User {
@@ -33,10 +27,8 @@ model User {
   passwordHash   String
   dob            DateTime  // Data de nascimento
   role           Role      @default(STUDENT)
-  cpfHash        String?   @unique // SHA-256 do CPF (somente staff)
   avatarUrl      String?
   isBanned       Boolean   @default(false)
-  isVerified     Boolean   @default(false) // E-mail verificado
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -44,35 +36,18 @@ model User {
   progress            UserProgress[]
   roomMembers         RoomMember[]
   messages            Message[]
-  verificationCodes   VerificationCode[]
 }
 
-// Tabela dedicada para códigos de verificação — hashes, finalidade, controle de tentativas
-model VerificationCode {
-  id          String              @id @default(uuid())
-  userId      String
-  codeHash    String              // SHA-256 do código (nunca armazenar em texto puro)
-  purpose     VerificationPurpose // REGISTER, LOGIN, ADMIN_LOGIN
-  attempts    Int                 @default(0)
-  maxAttempts Int                 @default(5)
-  isUsed      Boolean             @default(false)
-  expiresAt   DateTime
-  createdAt   DateTime            @default(now())
-
-  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, purpose])
-  @@index([expiresAt])
-}
-
-model Whitelist_CPF {
-  cpf   String @id // PK: String contendo os 11 dígitos
-  role  Role   // Qual privilégio automático este CPF concede ao se cadastrar
+// Whitelist de e-mails — quem está aqui recebe a role automaticamente ao cadastrar
+model WhitelistEmail {
+  email String @id // PK: e-mail normalizado (lowercase + trim)
+  role  Role   // Role automática ao cadastrar
 }
 
 // ============================================================================
 // 2. CMS DINÂMICO (IDENTIDADE VISUAL DA PLATAFORMA)
 // ============================================================================
+
 model AppSettings {
   id         Int      @id @default(1)
   themeColor String   @default("#7C3AED") // Cor principal para consumo dinâmico do front
@@ -83,6 +58,7 @@ model AppSettings {
 // ============================================================================
 // 3. CONTEÚDO CURRICULAR E ORDENAÇÃO
 // ============================================================================
+
 model Module {
   id          String   @id @default(uuid())
   title       String   // Ex: "Conversação", "Vocabulário"
@@ -112,6 +88,7 @@ model Lesson {
   title       String
   content     String   @db.Text
   videoUrl    String?  // Link de plataforma terceira (YouTube, Vimeo)
+  published   Boolean  @default(false) // Se true, a aula fica visível para alunos
   orderIndex  Int      @default(0)
   
   module      Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
@@ -154,6 +131,7 @@ model Attachment {
 // ============================================================================
 // 4. PROGRESSO E EXPERIÊNCIA GAMIFICADA
 // ============================================================================
+
 model UserProgress {
   userId      String
   lessonId    String
@@ -170,6 +148,7 @@ model UserProgress {
 // ============================================================================
 // 5. CHAT COMUNITÁRIO (TANDEM-LIKE)
 // ============================================================================
+
 enum RoomType {
   PRIVATE
   GROUP

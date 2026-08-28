@@ -14,7 +14,6 @@ import { MediaLibrary } from './pages/MediaLibrary'
 import { AdminPanel } from './pages/AdminPanel'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
-import { VerifyEmail } from './pages/VerifyEmail'
 
 function App() {
   const checkAuth = useAuthStore((s) => s.checkAuth)
@@ -54,7 +53,7 @@ function App() {
   }
 
   // Public routes that should show the PublicNavbar
-  const publicPaths = ['/', '/login', '/register', '/verify-email']
+  const publicPaths = ['/', '/login', '/register']
   const isPublicPage = publicPaths.includes(window.location.pathname)
 
   return (
@@ -77,7 +76,6 @@ function App() {
         {/* Auth pages */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
 
         {/* Rotas protegidas (qualquer usuário autenticado) */}
         <Route element={<ProtectedRoute />}>

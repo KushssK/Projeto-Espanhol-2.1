@@ -3,12 +3,13 @@ import { api, assetUrl } from '../services/api';
 import { useThemeStore } from '../stores/useThemeStore';
 import {
   LayoutDashboard, FolderTree, Library, ShieldCheck, Users, Palette,
-  Plus, Trash2, ArrowUp, ArrowDown, X, Check, Save, Upload, Eye, Ban, RefreshCw, FileText
+  Plus, Trash2, ArrowUp, ArrowDown, X, Check, Save, Upload, Eye, Ban, RefreshCw, FileText, Play, ExternalLink
 } from 'lucide-react';
 
 // ============================================================================
 // Tipos
 // ============================================================================
+
 interface ModuleItem {
   id: string;
   title: string;
@@ -20,6 +21,8 @@ interface LessonItem {
   id: string;
   title: string;
   orderIndex: number;
+  published: boolean;
+  videoUrl: string | null;
 }
 
 interface CategoryItem {
@@ -37,8 +40,8 @@ interface MediaItem {
   orderIndex: number;
 }
 
-interface WhitelistEntry {
-  cpf: string;
+interface WhitelistEmailEntry {
+  email: string;
   role: 'TEACHER' | 'ADMIN';
 }
 
@@ -62,6 +65,7 @@ interface ProgressDetail {
 // ============================================================================
 // Helpers de UI
 // ============================================================================
+
 const Card: React.FC<{ title?: string; children: React.ReactNode; actions?: React.ReactNode }> = ({ title, children, actions }) => (
   <div className="glass rounded-[20px] border border-[var(--border-color)] overflow-hidden">
     {(title || actions) && (
@@ -104,10 +108,24 @@ const IconBtn: React.FC<{ onClick?: () => void; title?: string; danger?: boolean
   </button>
 );
 
+// Extrair ID do YouTube de diversas URL formats
+function extractYouTubeId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+    /^([a-zA-Z0-9_-]{11})$/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
+
 // ============================================================================
 // App
 // ============================================================================
-type Tab = 'overview' | 'content' | 'media' | 'whitelist' | 'users' | 'appearance';
+
+type Tab = 'overview' | 'content' | 'videos' | 'media' | 'whitelist' | 'users' | 'appearance';
 
 export const AdminPanel: React.FC = () => {
   const [tab, setTab] = useState<Tab>('overview');
@@ -116,8 +134,9 @@ export const AdminPanel: React.FC = () => {
   const tabs: Array<{ key: Tab; label: string; icon: React.ReactNode }> = [
     { key: 'overview', label: 'Visão Geral', icon: <LayoutDashboard size={16} /> },
     { key: 'content', label: 'Módulos & Aulas', icon: <FolderTree size={16} /> },
+    { key: 'videos', label: 'Videoaulas', icon: <Play size={16} /> },
     { key: 'media', label: 'Acervo', icon: <Library size={16} /> },
-    { key: 'whitelist', label: 'Whitelist CPF', icon: <ShieldCheck size={16} /> },
+    { key: 'whitelist', label: 'Whitelist E-mails', icon: <ShieldCheck size={16} /> },
     { key: 'users', label: 'Usuários', icon: <Users size={16} /> },
     { key: 'appearance', label: 'Aparência', icon: <Palette size={16} /> },
   ];
@@ -151,8 +170,9 @@ export const AdminPanel: React.FC = () => {
 
       {tab === 'overview' && <OverviewTab themeColor={themeColor} onGo={setTab} />}
       {tab === 'content' && <ContentTab themeColor={themeColor} />}
+      {tab === 'videos' && <VideoLessonsTab themeColor={themeColor} />}
       {tab === 'media' && <MediaTab themeColor={themeColor} />}
-      {tab === 'whitelist' && <WhitelistTab themeColor={themeColor} />}
+      {tab === 'whitelist' && <WhitelistEmailTab themeColor={themeColor} />}
       {tab === 'users' && <UsersTab themeColor={themeColor} />}
       {tab === 'appearance' && <AppearanceTab themeColor={themeColor} />}
     </div>
@@ -162,8 +182,9 @@ export const AdminPanel: React.FC = () => {
 // ============================================================================
 // Visão Geral
 // ============================================================================
+
 const OverviewTab: React.FC<{ themeColor: string; onGo: (t: Tab) => void }> = ({ themeColor, onGo }) => {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<Record<string, number> | null>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -176,7 +197,7 @@ const OverviewTab: React.FC<{ themeColor: string; onGo: (t: Tab) => void }> = ({
         setStats({
           users: usersRes.data.pagination?.total ?? 0,
           modules: modulesRes.data.length,
-          lessons: modulesRes.data.reduce((acc: number, m: any) => acc + (m.lessons?.length || 0), 0),
+          lessons: modulesRes.data.reduce((acc: number, m: ModuleItem & { lessons?: unknown[] }) => acc + (m.lessons?.length || 0), 0),
           media: mediaRes.data.length,
         });
       } catch (error) {
@@ -209,7 +230,8 @@ const OverviewTab: React.FC<{ themeColor: string; onGo: (t: Tab) => void }> = ({
         <div className="flex flex-wrap gap-3">
           {[
             { t: 'content' as Tab, label: 'Gerenciar Módulos e Aulas' },
-            { t: 'whitelist' as Tab, label: 'Autorizar CPFs (Staff)' },
+            { t: 'videos' as Tab, label: 'Gerenciar Videoaulas' },
+            { t: 'whitelist' as Tab, label: 'Whitelist de E-mails' },
             { t: 'users' as Tab, label: 'Usuários e Banimentos' },
             { t: 'appearance' as Tab, label: 'Personalizar Tema e Logo' },
           ].map((b) => (
@@ -217,7 +239,7 @@ const OverviewTab: React.FC<{ themeColor: string; onGo: (t: Tab) => void }> = ({
               key={b.t}
               onClick={() => onGo(b.t)}
               className="btn-3d text-sm font-bold"
-              style={{ padding: '10px 18px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}
+              style={{ padding: '10px 18px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
             >
               {b.label}
             </button>
@@ -238,6 +260,7 @@ const OverviewTab: React.FC<{ themeColor: string; onGo: (t: Tab) => void }> = ({
 // ============================================================================
 // Módulos & Aulas (CMS com reordenação)
 // ============================================================================
+
 const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
   const [modules, setModules] = useState<ModuleItem[]>([]);
   const [lessonsByModule, setLessonsByModule] = useState<Record<string, LessonItem[]>>({});
@@ -283,8 +306,9 @@ const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
       setShowCreateModule(false);
       setModuleForm({ title: '', description: '' });
       await loadModules();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao criar módulo.');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao criar módulo.');
     }
   };
 
@@ -293,8 +317,9 @@ const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
     try {
       await api.delete(`/modules/${id}`);
       await loadModules();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao excluir módulo.');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao excluir módulo.');
     }
   };
 
@@ -329,7 +354,7 @@ const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
         <button
           onClick={() => setShowCreateModule((v) => !v)}
           className="btn-3d text-sm font-bold"
-          style={{ padding: '10px 18px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}
+          style={{ padding: '10px 18px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
         >
           <Plus size={16} /> Novo Módulo
         </button>
@@ -339,7 +364,7 @@ const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
         <Card>
           <form onSubmit={createModule} className="flex flex-col gap-3">
             <Input
-              placeholder="Título do módulo (ex: 6. Acervo Multimídia)"
+              placeholder="Título do módulo (ex: Conversação)"
               value={moduleForm.title}
               onChange={(e) => setModuleForm((f) => ({ ...f, title: e.target.value }))}
               required
@@ -350,7 +375,7 @@ const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
               onChange={(e) => setModuleForm((f) => ({ ...f, description: e.target.value }))}
             />
             <div className="flex gap-3">
-              <button type="submit" className="btn-3d text-sm font-bold flex-1" style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}>
+              <button type="submit" className="btn-3d text-sm font-bold flex-1" style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
                 <Save size={16} /> Salvar Módulo
               </button>
               <button type="button" onClick={() => setShowCreateModule(false)} className="btn-3d btn-secondary text-sm font-bold flex-1">
@@ -410,8 +435,9 @@ const ModuleEditor: React.FC<{
       setShowLessonForm(false);
       setLessonForm({ title: '', content: '', videoUrl: '' });
       onExpand();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao criar aula.');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao criar aula.');
     }
   };
 
@@ -420,8 +446,9 @@ const ModuleEditor: React.FC<{
     try {
       await api.delete(`/lessons/${lessonId}`);
       onExpand();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao excluir aula.');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao excluir aula.');
     }
   };
 
@@ -443,8 +470,9 @@ const ModuleEditor: React.FC<{
       setShowCategoryForm(false);
       setCategoryForm({ title: '', description: '' });
       onExpand();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao criar categoria.');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao criar categoria.');
     }
   };
 
@@ -453,8 +481,9 @@ const ModuleEditor: React.FC<{
     try {
       await api.delete(`/categories/${categoryId}`);
       onExpand();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao excluir categoria.');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao excluir categoria.');
     }
   };
 
@@ -518,7 +547,7 @@ const ModuleEditor: React.FC<{
                 <Input placeholder="Título da categoria" value={categoryForm.title} onChange={(e) => setCategoryForm((f) => ({ ...f, title: e.target.value }))} required />
                 <Input placeholder="Descrição (opcional)" value={categoryForm.description} onChange={(e) => setCategoryForm((f) => ({ ...f, description: e.target.value }))} />
                 <div className="flex gap-2">
-                  <button type="submit" className="btn-3d text-xs font-bold" style={{ padding: '8px 14px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}>
+                  <button type="submit" className="btn-3d text-xs font-bold" style={{ padding: '8px 14px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
                     Salvar
                   </button>
                   <button type="button" onClick={() => setShowCategoryForm(false)} className="btn-3d btn-secondary text-xs font-bold" style={{ padding: '8px 14px' }}>
@@ -560,7 +589,7 @@ const ModuleEditor: React.FC<{
                 <TextArea placeholder="Conteúdo teórico / exercícios (texto)" value={lessonForm.content} onChange={(e) => setLessonForm((f) => ({ ...f, content: e.target.value }))} required />
                 <Input placeholder="URL do vídeo (YouTube/Vimeo) — opcional" value={lessonForm.videoUrl} onChange={(e) => setLessonForm((f) => ({ ...f, videoUrl: e.target.value }))} />
                 <div className="flex gap-2">
-                  <button type="submit" className="btn-3d text-xs font-bold" style={{ padding: '8px 14px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}>
+                  <button type="submit" className="btn-3d text-xs font-bold" style={{ padding: '8px 14px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
                     Salvar Aula
                   </button>
                   <button type="button" onClick={() => setShowLessonForm(false)} className="btn-3d btn-secondary text-xs font-bold" style={{ padding: '8px 14px' }}>
@@ -592,7 +621,7 @@ const ModuleEditor: React.FC<{
 
 // Anexos de uma aula (upload + listagem + exclusão)
 const LessonAttachments: React.FC<{ lessonId: string; themeColor: string }> = ({ lessonId, themeColor }) => {
-  const [attachments, setAttachments] = useState<any[]>([]);
+  const [attachments, setAttachments] = useState<Array<{ id: string; type: string; url: string }>>([]);
   const [open, setOpen] = useState(false);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
@@ -613,8 +642,9 @@ const LessonAttachments: React.FC<{ lessonId: string; themeColor: string }> = ({
     try {
       await api.post(`/attachments/${lessonId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       await load();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao enviar anexo (máx 20MB).');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao enviar anexo (máx 20MB).');
     } finally {
       if (fileRef.current) fileRef.current.value = '';
     }
@@ -625,7 +655,7 @@ const LessonAttachments: React.FC<{ lessonId: string; themeColor: string }> = ({
     try {
       await api.delete(`/attachments/${id}`);
       await load();
-    } catch (error) {
+    } catch {
       alert('Erro ao excluir anexo.');
     }
   };
@@ -643,7 +673,7 @@ const LessonAttachments: React.FC<{ lessonId: string; themeColor: string }> = ({
               <IconBtn onClick={() => setOpen(false)}><X size={15} /></IconBtn>
             </div>
             <input ref={fileRef} type="file" accept="application/pdf,audio/*,image/*" onChange={handleUpload} className="hidden" />
-            <button onClick={() => fileRef.current?.click()} className="btn-3d text-sm font-bold" style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}>
+            <button onClick={() => fileRef.current?.click()} className="btn-3d text-sm font-bold" style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
               <Upload size={16} /> Enviar Anexo (máx 20MB)
             </button>
             <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
@@ -669,8 +699,304 @@ const LessonAttachments: React.FC<{ lessonId: string; themeColor: string }> = ({
 };
 
 // ============================================================================
+// Videoaulas — CRUD por módulo
+// ============================================================================
+
+interface VideoLessonItem {
+  id: string;
+  title: string;
+  description: string | null;
+  content: string;
+  videoUrl: string | null;
+  published: boolean;
+  orderIndex: number;
+  module: { id: string; title: string };
+}
+
+const VideoLessonsTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
+  const [videoLessons, setVideoLessons] = useState<VideoLessonItem[]>([]);
+  const [modules, setModules] = useState<ModuleItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterModule, setFilterModule] = useState<string>('all');
+
+  // Formulário
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    videoUrl: '',
+    moduleId: '',
+    orderIndex: '0',
+    published: true,
+  });
+
+  const loadModules = useCallback(async () => {
+    try {
+      const res = await api.get('/modules');
+      setModules(res.data);
+    } catch (error) {
+      console.error('Erro ao carregar módulos:', error);
+    }
+  }, []);
+
+  const loadVideoLessons = useCallback(async () => {
+    try {
+      setLoading(true);
+      // Buscar aulas de todos os módulos que tenham videoUrl
+      const modulesRes = await api.get('/modules');
+      const allLessons: VideoLessonItem[] = [];
+
+      for (const mod of modulesRes.data) {
+        const lessonsRes = await api.get(`/lessons/module/${mod.id}`);
+        for (const lesson of lessonsRes.data) {
+          allLessons.push({
+            ...lesson,
+            module: { id: mod.id, title: mod.title },
+          });
+        }
+      }
+
+      // Filtrar apenas aulas com videoUrl
+      setVideoLessons(allLessons.filter((l) => l.videoUrl));
+    } catch (error) {
+      console.error('Erro ao carregar videoaulas:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadModules();
+    loadVideoLessons();
+  }, [loadModules, loadVideoLessons]);
+
+  const filteredLessons = filterModule === 'all'
+    ? videoLessons
+    : videoLessons.filter((l) => l.module.id === filterModule);
+
+  const resetForm = () => {
+    setForm({ title: '', description: '', videoUrl: '', moduleId: '', orderIndex: '0', published: true });
+    setEditingId(null);
+    setShowForm(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.moduleId || !form.title || !form.videoUrl) {
+      alert('Título, módulo e URL do YouTube são obrigatórios.');
+      return;
+    }
+
+    try {
+      if (editingId) {
+        // Editar aula existente
+        await api.put(`/lessons/${editingId}`, {
+          title: form.title,
+          content: form.description || '',
+          videoUrl: form.videoUrl,
+        });
+      } else {
+        // Criar nova aula
+        await api.post('/lessons', {
+          moduleId: form.moduleId,
+          title: form.title,
+          content: form.description || '',
+          videoUrl: form.videoUrl,
+          orderIndex: parseInt(form.orderIndex, 10) || 0,
+          published: form.published,
+        });
+      }
+      resetForm();
+      await loadVideoLessons();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao salvar videoaula.');
+    }
+  };
+
+  const handleEdit = (lesson: VideoLessonItem) => {
+    setForm({
+      title: lesson.title,
+      description: lesson.description || '',
+      videoUrl: lesson.videoUrl || '',
+      moduleId: lesson.module.id,
+      orderIndex: String(lesson.orderIndex),
+      published: lesson.published,
+    });
+    setEditingId(lesson.id);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Excluir esta videoaula?')) return;
+    try {
+      await api.delete(`/lessons/${id}`);
+      await loadVideoLessons();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao excluir videoaula.');
+    }
+  };
+
+  if (loading) {
+    return <p className="text-center py-16" style={{ color: 'var(--text-muted)' }}>Carregando videoaulas...</p>;
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Cabeçalho */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <p className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>
+            {filteredLessons.length} videoaula(s)
+          </p>
+          <Select value={filterModule} onChange={(e) => setFilterModule(e.target.value)} style={{ padding: '8px 12px', fontSize: '12px' }}>
+            <option value="all">Todos os módulos</option>
+            {modules.map((m) => (
+              <option key={m.id} value={m.id}>{m.title}</option>
+            ))}
+          </Select>
+        </div>
+        <button
+          onClick={() => { resetForm(); setShowForm((v) => !v); }}
+          className="btn-3d text-sm font-bold"
+          style={{ padding: '10px 18px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
+        >
+          <Plus size={16} /> Nova Videoaula
+        </button>
+      </div>
+
+      {/* Formulário */}
+      {showForm && (
+        <Card title={editingId ? 'Editar Videoaula' : 'Nova Videoaula'}>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <Input
+              placeholder="Título (ex: Saludos y Presentaciones)"
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              required
+            />
+            <TextArea
+              placeholder="Descrição (opcional)"
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
+            <Input
+              placeholder="URL do YouTube (ex: https://www.youtube.com/watch?v=ABC123)"
+              value={form.videoUrl}
+              onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
+              required
+            />
+            {form.videoUrl && extractYouTubeId(form.videoUrl) && (
+              <div className="w-full aspect-video rounded-xl overflow-hidden border border-[var(--border-color)]">
+                <iframe
+                  src={`https://www.youtube.com/embed/${extractYouTubeId(form.videoUrl)}`}
+                  className="w-full h-full border-none"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title="Preview"
+                />
+              </div>
+            )}
+            <div className="flex gap-3 flex-wrap">
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-xs font-bold px-1 mb-1 block" style={{ color: 'var(--text-muted)' }}>MÓDULO</label>
+                <Select
+                  value={form.moduleId}
+                  onChange={(e) => setForm((f) => ({ ...f, moduleId: e.target.value }))}
+                  required
+                >
+                  <option value="">Selecione o módulo</option>
+                  {modules.map((m) => (
+                    <option key={m.id} value={m.id}>{m.title}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="w-24">
+                <label className="text-xs font-bold px-1 mb-1 block" style={{ color: 'var(--text-muted)' }}>ORDEM</label>
+                <Input
+                  type="number"
+                  value={form.orderIndex}
+                  onChange={(e) => setForm((f) => ({ ...f, orderIndex: e.target.value }))}
+                />
+              </div>
+              <div className="flex items-end gap-2 pb-1">
+                <input
+                  type="checkbox"
+                  checked={form.published}
+                  onChange={(e) => setForm((f) => ({ ...f, published: e.target.checked }))}
+                  className="h-5 w-5 rounded"
+                  style={{ accentColor: themeColor }}
+                />
+                <label className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>Publicado</label>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button type="submit" className="btn-3d text-sm font-bold flex-1" style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
+                <Save size={16} /> {editingId ? 'Atualizar' : 'Salvar Videoaula'}
+              </button>
+              <button type="button" onClick={resetForm} className="btn-3d btn-secondary text-sm font-bold flex-1">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {/* Lista de videoaulas */}
+      <div className="flex flex-col gap-3">
+        {filteredLessons.map((lesson) => {
+          const ytId = lesson.videoUrl ? extractYouTubeId(lesson.videoUrl) : null;
+          return (
+            <div key={lesson.id} className="glass rounded-[20px] border border-[var(--border-color)] overflow-hidden">
+              <div className="flex items-center gap-3 p-4">
+                {ytId && (
+                  <img
+                    src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`}
+                    alt={lesson.title}
+                    className="w-24 h-16 rounded-lg object-cover shrink-0"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-extrabold truncate" style={{ color: 'var(--text-main)' }}>{lesson.title}</p>
+                  <p className="text-xs font-bold" style={{ color: themeColor }}>{lesson.module.title}</p>
+                  {lesson.description && (
+                    <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{lesson.description}</p>
+                  )}
+                </div>
+                <Badge color={lesson.published ? 'var(--color-success)' : 'var(--text-muted)'}>
+                  {lesson.published ? 'Publicado' : 'Rascunho'}
+                </Badge>
+                {lesson.videoUrl && (
+                  <a href={lesson.videoUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-bold flex items-center gap-1" style={{ color: themeColor }}>
+                    <ExternalLink size={14} />
+                  </a>
+                )}
+                <IconBtn onClick={() => handleEdit(lesson)} title="Editar">
+                  <FileText size={14} />
+                </IconBtn>
+                <IconBtn onClick={() => handleDelete(lesson.id)} title="Excluir" danger>
+                  <Trash2 size={14} />
+                </IconBtn>
+              </div>
+            </div>
+          );
+        })}
+        {filteredLessons.length === 0 && (
+          <p className="text-center py-12 italic" style={{ color: 'var(--text-muted)' }}>
+            Nenhuma videoaula encontrada. Cadastre a primeira!
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
 // Acervo Multimídia
 // ============================================================================
+
 const MediaTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -707,8 +1033,9 @@ const MediaTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
       setSelectedFile(null);
       if (fileRef.current) fileRef.current.value = '';
       await load();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao criar item do acervo.');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao criar item do acervo.');
     }
   };
 
@@ -717,7 +1044,7 @@ const MediaTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
     try {
       await api.delete(`/media-library/${id}`);
       await load();
-    } catch (error) {
+    } catch {
       alert('Erro ao excluir item.');
     }
   };
@@ -737,7 +1064,7 @@ const MediaTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>{items.length} itens no acervo</p>
-        <button onClick={() => setShowForm((v) => !v)} className="btn-3d text-sm font-bold" style={{ padding: '10px 18px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}>
+        <button onClick={() => setShowForm((v) => !v)} className="btn-3d text-sm font-bold" style={{ padding: '10px 18px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
           <Plus size={16} /> Novo Item
         </button>
       </div>
@@ -767,7 +1094,7 @@ const MediaTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
               </p>
             </div>
             <div className="flex gap-3">
-              <button type="submit" className="btn-3d text-sm font-bold flex-1" style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}>
+              <button type="submit" className="btn-3d text-sm font-bold flex-1" style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
                 <Save size={16} /> Salvar Item
               </button>
               <button type="button" onClick={() => setShowForm(false)} className="btn-3d btn-secondary text-sm font-bold flex-1">
@@ -802,11 +1129,12 @@ const MediaTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
 };
 
 // ============================================================================
-// Whitelist CPF
+// Whitelist de E-mails
 // ============================================================================
-const WhitelistTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
-  const [entries, setEntries] = useState<WhitelistEntry[]>([]);
-  const [form, setForm] = useState({ cpf: '', role: 'TEACHER' as 'TEACHER' | 'ADMIN' });
+
+const WhitelistEmailTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
+  const [entries, setEntries] = useState<WhitelistEmailEntry[]>([]);
+  const [form, setForm] = useState({ email: '', role: 'TEACHER' as 'TEACHER' | 'ADMIN' });
 
   const load = useCallback(async () => {
     try {
@@ -824,59 +1152,62 @@ const WhitelistTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/admin/whitelist', { cpf: form.cpf.replace(/\D/g, ''), role: form.role });
-      setForm({ cpf: '', role: 'TEACHER' });
+      await api.post('/admin/whitelist', { email: form.email, role: form.role });
+      setForm({ email: '', role: 'TEACHER' });
       await load();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao autorizar CPF.');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao autorizar e-mail.');
     }
   };
 
-  const handleRemove = async (cpf: string) => {
-    if (!window.confirm(`Remover o CPF ${cpf} da whitelist?`)) return;
+  const handleRemove = async (email: string) => {
+    if (!window.confirm(`Remover o e-mail ${email} da whitelist?`)) return;
     try {
-      await api.delete(`/admin/whitelist/${cpf}`);
+      await api.delete(`/admin/whitelist/${encodeURIComponent(email)}`);
       await load();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao remover CPF.');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao remover e-mail.');
     }
   };
 
   return (
     <div className="flex flex-col gap-6">
-      <Card title="Autorizar CPF para Staff">
+      <Card title="Autorizar E-mail para Staff">
         <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-3">
           <Input
-            placeholder="000.000.000-00"
-            value={form.cpf}
-            onChange={(e) => setForm((f) => ({ ...f, cpf: e.target.value }))}
+            type="email"
+            placeholder="email@exemplo.com"
+            value={form.email}
+            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
             required
             className="flex-1"
           />
-          <Select value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as any }))} className="sm:w-48">
+          <Select value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as 'TEACHER' | 'ADMIN' }))} className="sm:w-48">
             <option value="TEACHER">Professor</option>
             <option value="ADMIN">Administrador</option>
           </Select>
-          <button type="submit" className="btn-3d text-sm font-bold" style={{ padding: '10px 18px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}>
+          <button type="submit" className="btn-3d text-sm font-bold" style={{ padding: '10px 18px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
             <Plus size={16} /> Autorizar
           </button>
         </form>
         <p className="text-[11px] mt-2" style={{ color: 'var(--text-muted)' }}>
-          O staff se cadastra com CPF e a role é atribuída automaticamente se constar aqui.
+          O e-mail autorizado recebe a role automaticamente ao se cadastrar na plataforma.
         </p>
       </Card>
 
-      <Card title={`CPFs autorizados (${entries.length})`}>
+      <Card title={`E-mails autorizados (${entries.length})`}>
         <div className="flex flex-col gap-2">
           {entries.map((e) => (
-            <div key={e.cpf} className="flex items-center gap-3 p-3 rounded-xl border border-[var(--border-color)]">
-              <span className="font-mono font-bold text-sm flex-1" style={{ color: 'var(--text-main)' }}>{e.cpf}</span>
+            <div key={e.email} className="flex items-center gap-3 p-3 rounded-xl border border-[var(--border-color)]">
+              <span className="font-mono font-bold text-sm flex-1 truncate" style={{ color: 'var(--text-main)' }}>{e.email}</span>
               <Badge color={e.role === 'ADMIN' ? themeColor : 'var(--color-info)'}>{e.role}</Badge>
-              <IconBtn onClick={() => handleRemove(e.cpf)} danger title="Remover"><Trash2 size={14} /></IconBtn>
+              <IconBtn onClick={() => handleRemove(e.email)} danger title="Remover"><Trash2 size={14} /></IconBtn>
             </div>
           ))}
           {entries.length === 0 && (
-            <p className="text-center py-6 italic" style={{ color: 'var(--text-muted)' }}>Nenhum CPF autorizado ainda.</p>
+            <p className="text-center py-6 italic" style={{ color: 'var(--text-muted)' }}>Nenhum e-mail autorizado ainda.</p>
           )}
         </div>
       </Card>
@@ -887,6 +1218,7 @@ const WhitelistTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
 // ============================================================================
 // Usuários (listar, banir, ver progresso)
 // ============================================================================
+
 const UsersTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [page, setPage] = useState(1);
@@ -914,8 +1246,9 @@ const UsersTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
     try {
       await api.put(`/users/${u.id}/${u.isBanned ? 'unban' : 'ban'}`);
       await load(page);
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao alterar banimento.');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao alterar banimento.');
     }
   };
 
@@ -923,7 +1256,7 @@ const UsersTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
     try {
       const res = await api.get(`/users/${u.id}/progress`);
       setViewing({ user: u, progress: res.data.progress, totalXP: res.data.totalXP });
-    } catch (error) {
+    } catch {
       alert('Erro ao carregar progresso.');
     }
   };
@@ -966,7 +1299,7 @@ const UsersTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
             Anterior
           </button>
           <span className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>{page} / {totalPages}</span>
-          <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="btn-3d text-xs font-bold" style={{ padding: '8px 14px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}>
+          <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="btn-3d text-xs font-bold" style={{ padding: '8px 14px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
             Próxima
           </button>
         </div>
@@ -1016,6 +1349,7 @@ const UsersTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
 // ============================================================================
 // Aparência (identidade visual dinâmica)
 // ============================================================================
+
 const AppearanceTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
   const { fetchSettings, updateSettingsOnState } = useThemeStore();
   const [color, setColor] = useState(themeColor);
@@ -1047,7 +1381,7 @@ const AppearanceTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
       await fetchSettings();
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-    } catch (error) {
+    } catch {
       alert('Erro ao salvar as configurações.');
     } finally {
       setSaving(false);
@@ -1063,8 +1397,9 @@ const AppearanceTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
       const res = await api.post('/settings/logo', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setLogoUrl(res.data.settings.logoUrl);
       await fetchSettings();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao enviar logo (máx 5MB, imagem).');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao enviar logo (máx 5MB, imagem).');
     } finally {
       if (logoRef.current) logoRef.current.value = '';
     }
@@ -1097,7 +1432,7 @@ const AppearanceTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
             </button>
           </div>
 
-          <button type="submit" disabled={saving} className="btn-3d font-bold" style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}>
+          <button type="submit" disabled={saving} className="btn-3d font-bold" style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
             {saving ? 'Salvando...' : <><Save size={18} /> Salvar Identidade Visual</>}
           </button>
           {saved && (

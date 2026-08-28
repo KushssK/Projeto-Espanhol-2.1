@@ -1,6 +1,6 @@
 /**
  * Dados públicos do usuário — remove campos sensíveis.
- * Reutilizado entre auth.controller e verification.controller.
+ * Reutilizado entre auth.controller.
  */
 export function publicUser(user: {
   id: string;

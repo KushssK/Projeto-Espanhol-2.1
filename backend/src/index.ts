@@ -5,9 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { createServer } from 'http';
 import { setupSocket } from './socket';
-import { cleanupExpiredCodes } from './lib/code';
-import { verifyEmailConfig } from './lib/email';
-import { seedWhitelist } from './lib/whitelist-seed';
+import { seedEmailWhitelist } from './lib/email-whitelist-seed';
 
 // Rotas
 import authRoutes from './routes/auth.routes';
@@ -21,7 +19,6 @@ import chatRoutes from './routes/chat.routes';
 import whitelistRoutes from './routes/whitelist.routes';
 import categoryRoutes from './routes/category.routes';
 import mediaLibraryRoutes from './routes/mediaLibrary.routes';
-import verificationRoutes from './routes/verification.routes';
 
 // ============================================================================
 // App Setup
@@ -74,7 +71,6 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/admin/whitelist', whitelistRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/media-library', mediaLibraryRoutes);
-app.use('/api/verification', verificationRoutes);
 
 // Health Check
 app.get('/api/health', (_req, res) => {
@@ -110,28 +106,10 @@ server.listen(port, async () => {
   console.log(`📡 Socket.IO ativo`);
   console.log(`📁 Uploads servidos em /uploads`);
 
-  // Verificar configuração de e-mail em produção
-  if (process.env.NODE_ENV === 'production') {
-    const emailOk = verifyEmailConfig();
-    console.log(emailOk ? '✅ Serviço de e-mail configurado (Resend)' : '⚠️ Serviço de e-mail não configurado — verifique RESEND_API_KEY e RESEND_FROM');
-  }
-
-  // Seed da whitelist (idempotente — seguro em cada restart)
+  // Seed da whitelist de e-mails (idempotente — seguro em cada restart)
   try {
-    await seedWhitelist();
+    await seedEmailWhitelist();
   } catch (err) {
-    console.error('⚠️ Erro ao inicializar whitelist (não bloqueante):', err);
+    console.error('⚠️ Erro ao inicializar whitelist de e-mails (não bloqueante):', err);
   }
 });
-
-// Limpeza periódica de códigos expirados (a cada hora)
-setInterval(async () => {
-  try {
-    const deleted = await cleanupExpiredCodes();
-    if (deleted > 0) {
-      console.log(`🧹 ${deleted} código(s) expirado(s) removido(s)`);
-    }
-  } catch (error) {
-    console.error('Erro na limpeza de códigos expirados:', error);
-  }
-}, 60 * 60 * 1000).unref();

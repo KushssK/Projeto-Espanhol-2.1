@@ -1,19 +1,27 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { prisma } from '../lib/prisma';
-import { hashCpf, normalizeCpf } from '../lib/cpf';
-import { sendVerificationCode } from '../lib/email';
-import { createVerificationCode, validateVerificationCode } from '../lib/code';
 import { signToken } from '../lib/token';
 import { publicUser } from '../lib/user';
-import { registerSchema, registerStaffSchema, loginSchema, bootstrapAdminSchema } from '../validators/auth.validators';
+import { registerSchema, loginSchema, bootstrapAdminSchema } from '../validators/auth.validators';
+
+// ============================================================================
+// Função auxiliar: normalizar e-mail
+// ============================================================================
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+// ============================================================================
+// Função auxiliar: criar conta de usuário
+// ============================================================================
 
 async function createUserAccount(params: {
   email: string;
   password: string;
   dob: string;
   username?: string;
-  cpfHash?: string;
   role: 'STUDENT' | 'TEACHER' | 'ADMIN';
 }) {
   const existingUser = await prisma.user.findFirst({
@@ -21,13 +29,12 @@ async function createUserAccount(params: {
       OR: [
         { email: params.email },
         { username: params.username || undefined },
-        ...(params.cpfHash ? [{ cpfHash: params.cpfHash }] : []),
       ],
     },
   });
 
   if (existingUser) {
-    return { error: 'Usuário já existe com este e-mail, username ou CPF.', status: 400 };
+    return { error: 'Usuário já existe com este e-mail ou username.', status: 400 };
   }
 
   const hashedPassword = await bcrypt.hash(params.password, 10);
@@ -39,12 +46,15 @@ async function createUserAccount(params: {
       dob: new Date(params.dob),
       username: params.username,
       role: params.role,
-      cpfHash: params.cpfHash,
     },
   });
 
   return { newUser };
 }
+
+// ============================================================================
+// CADASTRO — com whitelist de e-mails
+// ============================================================================
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -54,20 +64,21 @@ export const register = async (req: Request, res: Response) => {
     }
 
     const { email, password, dob, username } = parsed.data;
-    const cpf = req.body.cpf;
+    const normalizedEmail = normalizeEmail(email);
 
-    if (cpf) {
-      return res.status(403).json({
-        error: 'Cadastro de staff deve usar POST /api/auth/register/staff com CPF autorizado.',
-      });
-    }
+    // Consultar whitelist de e-mails para determinar a role
+    const whitelistEntry = await prisma.whitelistEmail.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    const role = whitelistEntry ? whitelistEntry.role : 'STUDENT';
 
     const result = await createUserAccount({
-      email,
+      email: normalizedEmail,
       password,
       dob,
       username,
-      role: 'STUDENT',
+      role,
     });
 
     if ('error' in result) {
@@ -76,26 +87,11 @@ export const register = async (req: Request, res: Response) => {
 
     const { newUser } = result;
 
-    // Gerar e enviar código de verificação (REGISTER)
-    const { code } = await createVerificationCode(newUser.id, 'REGISTER');
-    const emailSent = await sendVerificationCode(newUser.email, code, 'REGISTER');
-
-    // Em produção, se o SMTP falhar, informar o usuário (mas manter a conta)
-    if (!emailSent.success) {
-      return res.status(201).json({
-        message: 'Conta criada, mas não foi possível enviar o e-mail de verificação. Tente reenviar o código pela tela de verificação.',
-        requiresVerification: true,
-        purpose: 'REGISTER',
-        email: newUser.email,
-        emailFailed: true,
-      });
-    }
-
+    // Login automático — token direto, sem verificação por e-mail
     return res.status(201).json({
-      message: 'Conta criada! Verifique seu e-mail para o código de verificação.',
-      requiresVerification: true,
-      purpose: 'REGISTER',
-      email: newUser.email,
+      message: 'Conta criada com sucesso!',
+      token: signToken(newUser.id, newUser.role),
+      user: publicUser(newUser),
     });
   } catch (error) {
     console.error('Erro no registro:', error);
@@ -103,68 +99,9 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
-export const registerStaff = async (req: Request, res: Response) => {
-  try {
-    const parsed = registerStaffSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Dados de cadastro staff inválidos.' });
-    }
-
-    const { email, password, dob, cpf, username } = parsed.data;
-
-    const normalizedCpf = normalizeCpf(cpf);
-    if (!normalizedCpf) {
-      return res.status(400).json({ error: 'CPF inválido. Informe 11 dígitos.' });
-    }
-
-    const whitelistEntry = await prisma.whitelist_CPF.findUnique({
-      where: { cpf: normalizedCpf },
-    });
-
-    if (!whitelistEntry) {
-      return res.status(403).json({ error: 'CPF não autorizado para registro de Staff.' });
-    }
-
-    const result = await createUserAccount({
-      email,
-      password,
-      dob,
-      username,
-      cpfHash: hashCpf(normalizedCpf),
-      role: whitelistEntry.role,
-    });
-
-    if ('error' in result) {
-      return res.status(result.status ?? 400).json({ error: result.error });
-    }
-
-    const { newUser } = result;
-
-    // Gerar e enviar código de verificação (REGISTER)
-    const { code } = await createVerificationCode(newUser.id, 'REGISTER');
-    const emailSent = await sendVerificationCode(newUser.email, code, 'REGISTER');
-
-    if (!emailSent.success) {
-      return res.status(201).json({
-        message: 'Conta staff criada, mas não foi possível enviar o e-mail de verificação. Tente reenviar o código.',
-        requiresVerification: true,
-        purpose: 'REGISTER',
-        email: newUser.email,
-        emailFailed: true,
-      });
-    }
-
-    return res.status(201).json({
-      message: 'Conta staff criada! Verifique seu e-mail para o código de verificação.',
-      requiresVerification: true,
-      purpose: 'REGISTER',
-      email: newUser.email,
-    });
-  } catch (error) {
-    console.error('Erro no registro staff:', error);
-    return res.status(500).json({ error: 'Erro interno no servidor' });
-  }
-};
+// ============================================================================
+// BOOTSTRAP ADMIN — cria primeiro admin com secret
+// ============================================================================
 
 export const bootstrapAdmin = async (req: Request, res: Response) => {
   try {
@@ -192,7 +129,7 @@ export const bootstrapAdmin = async (req: Request, res: Response) => {
     }
 
     const result = await createUserAccount({
-      email,
+      email: normalizeEmail(email),
       password,
       dob,
       username,
@@ -204,12 +141,6 @@ export const bootstrapAdmin = async (req: Request, res: Response) => {
     }
 
     const { newUser } = result;
-
-    // Admin criado via bootstrap já sai verificado
-    await prisma.user.update({
-      where: { id: newUser.id },
-      data: { isVerified: true },
-    });
 
     return res.status(201).json({
       message: 'Admin criado com sucesso!',
@@ -223,7 +154,7 @@ export const bootstrapAdmin = async (req: Request, res: Response) => {
 };
 
 // ============================================================================
-// LOGIN — Agora com 2FA (código por e-mail) para todos os usuários
+// LOGIN — direto com e-mail e senha (sem 2FA)
 // ============================================================================
 
 export const login = async (req: Request, res: Response) => {
@@ -234,9 +165,10 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const { email, password } = parsed.data;
+    const normalizedEmail = normalizeEmail(email);
 
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (!user) {
@@ -253,98 +185,14 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Credenciais inválidas.' });
     }
 
-    // Se a conta não está verificada, gerar código de REGISTER primeiro
-    if (!user.isVerified) {
-      const { code } = await createVerificationCode(user.id, 'REGISTER');
-      const emailSent = await sendVerificationCode(user.email, code, 'REGISTER');
-
-      return res.status(403).json({
-        error: emailSent.success
-          ? 'Conta não verificada. Um código foi enviado para seu e-mail.'
-          : 'Conta não verificada. Não foi possível enviar o e-mail. Tente reenviar pela tela de verificação.',
-        requiresVerification: true,
-        purpose: 'REGISTER',
-        email: user.email,
-        ...(emailSent.success ? {} : { emailFailed: true }),
-      });
-    }
-
-    // Se tudo OK, gerar código de LOGIN (2FA)
-    const purpose = user.role === 'ADMIN' ? 'ADMIN_LOGIN' : 'LOGIN';
-    const { code } = await createVerificationCode(user.id, purpose);
-    const emailSent = await sendVerificationCode(user.email, code, purpose);
-
-    if (!emailSent.success) {
-      return res.status(503).json({
-        error: 'Não foi possível enviar o código de verificação. Tente novamente em alguns instantes.',
-      });
-    }
-
-    return res.status(200).json({
-      message: 'Credenciais válidas! Um código foi enviado para seu e-mail.',
-      requiresLoginVerification: true,
-      purpose,
-      email: user.email,
-    });
-  } catch (error) {
-    console.error('Erro no login:', error);
-    return res.status(500).json({ error: 'Erro interno no servidor' });
-  }
-};
-
-// ============================================================================
-// Confirmar login com código (2FA)
-// ============================================================================
-
-export const confirmLogin = async (req: Request, res: Response) => {
-  try {
-    const { email, code, purpose } = req.body;
-
-    if (!email || !code) {
-      return res.status(400).json({ error: 'E-mail e código são obrigatórios.' });
-    }
-
-    // Validar finalidade — não permitir misturar propósitos
-    if (purpose && !['LOGIN', 'ADMIN_LOGIN'].includes(purpose)) {
-      return res.status(400).json({ error: 'Finalidade inválida.' });
-    }
-
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      return res.status(401).json({ error: 'Credenciais inválidas.' });
-    }
-
-    if (user.isBanned) {
-      return res.status(403).json({ error: 'Conta banida.' });
-    }
-
-    if (!user.isVerified) {
-      return res.status(403).json({
-        error: 'Conta não verificada.',
-        requiresVerification: true,
-        purpose: 'REGISTER',
-        email: user.email,
-      });
-    }
-
-    // Servidor determina a finalidade com base no role — ignora purpose do cliente
-    const finalPurpose = user.role === 'ADMIN' ? 'ADMIN_LOGIN' : 'LOGIN';
-
-    // Validar o código com proteção contra brute force
-    const result = await validateVerificationCode(user.id, code, finalPurpose as any);
-
-    if (!result.success) {
-      return res.status(401).json({ error: result.error });
-    }
-
-    // Código válido — liberar sessão
+    // Login direto — sem código de verificação
     return res.status(200).json({
       message: 'Login realizado com sucesso!',
       token: signToken(user.id, user.role),
       user: publicUser(user),
     });
   } catch (error) {
-    console.error('Erro na confirmação de login:', error);
+    console.error('Erro no login:', error);
     return res.status(500).json({ error: 'Erro interno no servidor' });
   }
 };

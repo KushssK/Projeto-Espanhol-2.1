@@ -27,60 +27,12 @@ export const Login: React.FC = () => {
     setLoading(true);
     try {
       const response = await api.post('/auth/login', { email, password });
-      const data = response.data;
-
-      // Login 2FA: credenciais válidas, mas precisa de código
-      if (data.requiresLoginVerification) {
-        navigate('/verify-email', {
-          state: {
-            email: data.email || email,
-            purpose: data.purpose || 'LOGIN',
-          },
-        });
-        return;
-      }
-
-      // Conta não verificada
-      if (data.requiresVerification) {
-        navigate('/verify-email', {
-          state: {
-            email: data.email || email,
-            purpose: data.purpose || 'REGISTER',
-          },
-        });
-        return;
-      }
-
-      // Login direto (admin criado via bootstrap — já verificado)
-      const { token, user } = data;
+      const { token, user } = response.data;
       login(token, user);
       navigate('/dashboard');
-    } catch (err: any) {
-      const errorData = err.response?.data;
-
-      // Login 2FA: credenciais válidas mas precisa de código (403 com requiresLoginVerification)
-      if (errorData?.requiresLoginVerification) {
-        navigate('/verify-email', {
-          state: {
-            email: errorData.email || email,
-            purpose: errorData.purpose || 'LOGIN',
-          },
-        });
-        return;
-      }
-
-      // Conta não verificada
-      if (errorData?.requiresVerification) {
-        navigate('/verify-email', {
-          state: {
-            email: errorData.email || email,
-            purpose: errorData.purpose || 'REGISTER',
-          },
-        });
-        return;
-      }
-
-      setError(errorData?.error || 'Erro ao realizar login. Tente novamente.');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } };
+      setError(axiosErr.response?.data?.error || 'Erro ao realizar login. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -139,7 +91,7 @@ export const Login: React.FC = () => {
             type="submit"
             className="btn-3d w-full font-bold mt-2"
             disabled={loading}
-            style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}
+            style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
           >
             {loading ? 'Entrando...' : 'Entrar na Plataforma'}
           </button>

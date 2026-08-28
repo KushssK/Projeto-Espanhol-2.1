@@ -48,19 +48,6 @@ export const registerSchema = z.object({
   username: usernameSchema,
 });
 
-export const registerStaffSchema = z.object({
-  email: emailSchema,
-  password: passwordSchema,
-  dob: dobSchema,
-  username: usernameSchema,
-  cpf: z
-    .string()
-    .min(1, 'CPF é obrigatório para staff.')
-    .refine((v) => v.replace(/\D/g, '').length === 11, {
-      message: 'CPF deve conter 11 dígitos.',
-    }),
-});
-
 export const loginSchema = z.object({
   email: emailSchema,
   password: z.string().min(1, 'Senha é obrigatória.'),
@@ -76,6 +63,5 @@ export const bootstrapAdminSchema = z.object({
 
 // Tipos inferidos
 export type RegisterInput = z.infer<typeof registerSchema>;
-export type RegisterStaffInput = z.infer<typeof registerStaffSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type BootstrapAdminInput = z.infer<typeof bootstrapAdminSchema>;

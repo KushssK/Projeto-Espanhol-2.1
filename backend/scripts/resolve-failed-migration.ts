@@ -3,11 +3,26 @@
  *
  * Resolve migrations FAILED no _prisma_migrations do Prisma 7.x.
  *
- * Executa ANTES de `prisma migrate deploy` para garantir que
- * migrations com status "failed" sejam removidas e reaplicadas
- * com o SQL corrigido.
+ * ════════════════════════════════════════════════════════════════════
+ * COMO O PRISMA 7.9.1 IDENTIFICA MIGRATIONS FAILED:
  *
- * Estrutura REAL da tabela (NÃO existe coluna "status"):
+ *   Prisma considera uma migration como FAILED quando:
+ *     - logs IS NOT NULL AND length(logs) > 0
+ *     - rolled_back_at IS NULL
+ *
+ *   O estado NÃO depende de finished_at. Uma migration pode ter
+ *   started_at SET, finished_at NULL, e logs preenchidos — isso
+ *   significa que começou a executar mas falhou durante o SQL.
+ *   O Prisma 7.9.1 trata isso como FAILED e bloqueia novas migrations.
+ *
+ *   Estados derivados (Prisma 7.x):
+ *     logs=NULL, rolled_back_at=NULL → PENDING ou SUCCESS
+ *     logs preenchido, rolled_back_at=NULL → FAILED ← ESTE É O CASO
+ *     rolled_back_at SET → ROLLED_BACK
+ *
+ * ════════════════════════════════════════════════════════════════════
+ *
+ * Estrutura REAL da tabela _prisma_migrations:
  *   id, checksum, finished_at, migration_name, logs,
  *   rolled_back_at, started_at, applied_steps_count
  *
@@ -99,10 +114,14 @@ async function main() {
 
     console.log(`📋 [RESOLVE] Todas as migrations no banco (${allMigrations.rows.length}):`);
     for (const m of allMigrations.rows) {
-      const fin = m.finished_at ? 'SET' : 'NULL';
       const rol = m.rolled_back_at ? 'SET' : 'NULL';
-      const state = rol === 'SET' ? 'ROLLED_BACK' : fin === 'NULL' ? 'PENDING' : m.has_logs === 'YES' ? 'FAILED' : 'SUCCESS';
-      console.log(`   ${state.padEnd(12)} | ${m.migration_name} | finished_at=${fin} rolled_back_at=${rol} logs=${m.has_logs}`);
+      // Prisma 7.x: logs preenchido + rolled_back NULL = FAILED
+      const state = rol === 'SET'
+        ? 'ROLLED_BACK'
+        : m.has_logs === 'YES'
+          ? 'FAILED'
+          : 'OK';
+      console.log(`   ${state.padEnd(12)} | ${m.migration_name} | rolled_back_at=${rol} logs=${m.has_logs} steps=${m.applied_steps_count}`);
     }
     console.log('');
 
@@ -123,45 +142,46 @@ async function main() {
     const row = result.rows[0];
     const hasLogs = row.logs && row.logs.length > 0;
 
-    console.log('📋 [RESOLVE] Migration problemática encontrada:');
+    console.log('📋 [RESOLVE] Migration encontrada:');
     console.log(`   id: ${row.id}`);
     console.log(`   migration_name: ${row.migration_name}`);
     console.log(`   finished_at: ${row.finished_at ?? 'NULL'}`);
     console.log(`   rolled_back_at: ${row.rolled_back_at ?? 'NULL'}`);
     console.log(`   applied_steps_count: ${row.applied_steps_count}`);
+    console.log(`   logs: ${hasLogs ? `YES — ${row.logs.length} chars` : 'NO (empty/null)'}`);
     if (hasLogs) {
-      console.log(`   logs: ${row.logs.length} chars`);
-      // Mostrar apenas as últimas 2 linhas do erro para diagnóstico
-      const lastLines = row.logs.split('\n').filter((l: string) => l.trim()).slice(-2);
+      // Mostrar apenas as últimas 3 linhas do erro para diagnóstico
+      const lastLines = row.logs.split('\n').filter((l: string) => l.trim()).slice(-3);
       for (const line of lastLines) {
         console.log(`     > ${line}`);
       }
-    } else {
-      console.log('   logs: NULL (empty)');
     }
     console.log('');
 
-    // ── Determinar estado ──
-    const isFinished = row.finished_at !== null;
+    // ════════════════════════════════════════════════════════════════
+    // DETECÇÃO DE ESTADO — Prisma 7.x
+    //
+    // A regra real do Prisma:
+    //   logs preenchido + rolled_back_at NULL = FAILED
+    //
+    // O estado de finished_at é IRRELEVANTE para detecção de falha.
+    // Uma migration pode começar (started_at SET) mas falhar antes
+    // de completar (finished_at NULL) — e os logs capturam o erro.
+    // ════════════════════════════════════════════════════════════════
+
     const isRolledBack = row.rolled_back_at !== null;
 
-    if (!isFinished && !isRolledBack) {
-      console.log('⏳ [RESOLVE] Estado: PENDING. Nada a fazer — Prisma irá processar.');
-      return;
-    }
-
-    if (isFinished && !isRolledBack && !hasLogs) {
-      console.log('✅ [RESOLVE] Estado: SUCCESS. Nada a fazer.');
-      return;
-    }
-
+    // Caso 1: Já foi rolled back — Prisma reaplicará automaticamente
     if (isRolledBack) {
-      console.log('↩️  [RESOLVE] Estado: ROLLED_BACK. Prisma irá reaplicar automaticamente.');
+      console.log('↩️  [RESOLVE] Estado: ROLLED_BACK.');
+      console.log('   Prisma irá reaplicar automaticamente. Nada a fazer.');
       return;
     }
 
-    if (isFinished && hasLogs) {
-      console.log('⚠️  [RESOLVE] Estado: FAILED — executando resolução...');
+    // Caso 2: logs preenchido = FAILED (independente de finished_at)
+    if (hasLogs) {
+      console.log('⚠️  [RESOLVE] Estado: FAILED — logs preenchido detected.');
+      console.log('   Executando DELETE para resolver...');
 
       // DELETAR a row — Prisma tratará como pendente e reaplicará o SQL corrigido
       const deleteResult = await client.query(
@@ -192,15 +212,16 @@ async function main() {
 
       // Verificar quantas migrations restam
       const remaining = await client.query('SELECT COUNT(*)::int AS cnt FROM _prisma_migrations');
-      console.log(`\n✅ [RESOLVE] Row removida com sucesso. Verificação: 0 rows com nome "${MIGRATION_NAME}".`);
+      console.log(`\n✅ [RESOLVE] Migration removida com sucesso.`);
+      console.log(`   Verificação pós-delete: 0 rows com nome "${MIGRATION_NAME}".`);
       console.log(`   Total de migrations restantes no banco: ${remaining.rows[0].cnt}`);
       console.log('   Prisma migrate deploy irá reaplicar o SQL corrigido.');
       return;
     }
 
-    // Estado inesperado
-    console.log('⚠️  [RESOLVE] Estado inesperado. Nenhuma ação tomada.');
-    console.log('   Prisma irá tentar processar.');
+    // Caso 3: logs NULL + rolled_back NULL = PENDING ou OK
+    console.log('✅ [RESOLVE] Estado: OK (logs vazio, sem rolled_back).');
+    console.log('   Nada a fazer — migration não está em estado de falha.');
 
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);

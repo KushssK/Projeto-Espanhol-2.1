@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api, assetUrl } from '../services/api';
 import { useThemeStore } from '../stores/useThemeStore';
+import { YouTubePlayer, extractYouTubeId } from '../components/YouTubePlayer';
 import {
   LayoutDashboard, FolderTree, Library, ShieldCheck, Users, Palette,
   Plus, Trash2, ArrowUp, ArrowDown, X, Check, Save, Upload, Eye, Ban, RefreshCw, FileText, Play, ExternalLink
@@ -108,18 +109,7 @@ const IconBtn: React.FC<{ onClick?: () => void; title?: string; danger?: boolean
   </button>
 );
 
-// Extrair ID do YouTube de diversas URL formats
-function extractYouTubeId(url: string): string | null {
-  const patterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
-    /^([a-zA-Z0-9_-]{11})$/,
-  ];
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) return match[1];
-  }
-  return null;
-}
+// extractYouTubeId é importado de '../components/YouTubePlayer'
 
 // ============================================================================
 // App
@@ -795,6 +785,9 @@ const VideoLessonsTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
           title: form.title,
           content: form.description || '',
           videoUrl: form.videoUrl,
+          moduleId: form.moduleId,
+          orderIndex: parseInt(form.orderIndex, 10) || 0,
+          published: form.published,
         });
       } else {
         // Criar nova aula
@@ -889,15 +882,10 @@ const VideoLessonsTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
               required
             />
             {form.videoUrl && extractYouTubeId(form.videoUrl) && (
-              <div className="w-full aspect-video rounded-xl overflow-hidden border border-[var(--border-color)]">
-                <iframe
-                  src={`https://www.youtube.com/embed/${extractYouTubeId(form.videoUrl)}`}
-                  className="w-full h-full border-none"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title="Preview"
-                />
-              </div>
+              <YouTubePlayer
+                url={form.videoUrl}
+                title="Preview da Videoaula"
+              />
             )}
             <div className="flex gap-3 flex-wrap">
               <div className="flex-1 min-w-[200px]">

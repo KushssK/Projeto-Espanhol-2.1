@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api, assetUrl } from '../services/api';
 import { useThemeStore } from '../stores/useThemeStore';
+import { YouTubePlayer } from '../components/YouTubePlayer';
 import { ChevronLeft, FileText, CheckCircle2, ArrowRight, Download, Volume2 } from 'lucide-react';
 
 interface Attachment {
@@ -66,20 +67,6 @@ export const LessonView: React.FC = () => {
     }
   };
 
-  // Helper para obter ID do YouTube
-  const getYouTubeEmbedUrl = (url: string) => {
-    try {
-      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-      const match = url.match(regExp);
-      if (match && match[2].length === 11) {
-        return `https://www.youtube.com/embed/${match[2]}`;
-      }
-      return url; // Retorna original se for Vimeo ou já estiver em formato embed
-    } catch (e) {
-      return url;
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-height-[60vh] gap-4" style={{ height: '70vh' }}>
@@ -121,17 +108,13 @@ export const LessonView: React.FC = () => {
         </h1>
       </div>
 
-      {/* Player de Vídeo Responsivo (YouTube/Vimeo) */}
+      {/* Player de Vídeo Responsivo (YouTube) */}
       {lesson.videoUrl && (
-        <div className="w-full aspect-video rounded-[24px] overflow-hidden border-2 border-[var(--border-color)] shadow-md bg-black">
-          <iframe
-            src={getYouTubeEmbedUrl(lesson.videoUrl)}
-            title={lesson.title}
-            className="w-full h-full border-none"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
+        <YouTubePlayer
+          url={lesson.videoUrl}
+          title={lesson.title}
+          className="rounded-[24px] border-2"
+        />
       )}
 
       {/* Conteúdo Textual da Aula */}

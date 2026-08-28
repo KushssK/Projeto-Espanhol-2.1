@@ -9,8 +9,15 @@ export const getLessonsByModule = async (req: AuthRequest, res: Response) => {
   try {
     const moduleId = req.params.moduleId as string;
 
+    // Admin/Teacher veem todas as aulas (inclusive rascunhos)
+    // Students veem apenas aulas publicadas
+    const isStaff = req.user?.role === 'ADMIN' || req.user?.role === 'TEACHER';
+
     const lessons = await prisma.lesson.findMany({
-      where: { moduleId },
+      where: {
+        moduleId,
+        ...(isStaff ? {} : { published: true }),
+      },
       orderBy: { orderIndex: 'asc' },
       include: {
         attachments: {
@@ -61,7 +68,7 @@ export const getLessonById = async (req: AuthRequest, res: Response) => {
 // ============================================================================
 export const createLesson = async (req: AuthRequest, res: Response) => {
   try {
-    const { moduleId, title, content, videoUrl, orderIndex } = req.body;
+    const { moduleId, categoryId, title, content, videoUrl, orderIndex, published } = req.body;
 
     if (!moduleId || !title || !content) {
       return res.status(400).json({ error: 'moduleId, title e content são obrigatórios.' });
@@ -76,10 +83,12 @@ export const createLesson = async (req: AuthRequest, res: Response) => {
     const lesson = await prisma.lesson.create({
       data: {
         moduleId,
+        categoryId: categoryId || null,
         title,
         content,
-        videoUrl,
-        orderIndex: orderIndex || 0,
+        videoUrl: videoUrl || null,
+        orderIndex: orderIndex ?? 0,
+        published: published ?? false,
       },
     });
 
@@ -96,11 +105,19 @@ export const createLesson = async (req: AuthRequest, res: Response) => {
 export const updateLesson = async (req: AuthRequest, res: Response) => {
   try {
     const id = req.params.id as string;
-    const { title, content, videoUrl } = req.body;
+    const { title, content, videoUrl, published, orderIndex, moduleId, categoryId } = req.body;
 
     const existing = await prisma.lesson.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ error: 'Aula não encontrada.' });
+    }
+
+    // Se está mudando de módulo, verificar se o novo módulo existe
+    if (moduleId && moduleId !== existing.moduleId) {
+      const moduleExists = await prisma.module.findUnique({ where: { id: moduleId } });
+      if (!moduleExists) {
+        return res.status(404).json({ error: 'Módulo não encontrado.' });
+      }
     }
 
     const updated = await prisma.lesson.update({
@@ -109,6 +126,10 @@ export const updateLesson = async (req: AuthRequest, res: Response) => {
         ...(title !== undefined && { title }),
         ...(content !== undefined && { content }),
         ...(videoUrl !== undefined && { videoUrl }),
+        ...(published !== undefined && { published }),
+        ...(orderIndex !== undefined && { orderIndex }),
+        ...(moduleId !== undefined && { moduleId }),
+        ...(categoryId !== undefined && { categoryId: categoryId || null }),
       },
     });
 

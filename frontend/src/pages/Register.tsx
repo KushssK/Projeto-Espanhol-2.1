@@ -30,11 +30,12 @@ export const Register: React.FC = () => {
     }
 
     try {
-      const payload: any = { username, email, password, dob };
+      const payload: Record<string, string> = { username, email, password, dob };
       let endpoint = '/auth/register';
-      if (cpf) {
+      const cpfDigits = cpf.replace(/\D/g, '');
+      if (cpfDigits.length === 11) {
         // Staff: rota dedicada que valida o CPF na whitelist e atribui a role automaticamente
-        payload.cpf = cpf.replace(/\D/g, '');
+        payload.cpf = cpfDigits;
         endpoint = '/auth/register/staff';
       }
 
@@ -47,8 +48,9 @@ export const Register: React.FC = () => {
         login(token, user);
         navigate('/dashboard');
       }
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Erro ao criar conta. Verifique os dados fornecidos.');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } };
+      setError(axiosErr.response?.data?.error || 'Erro ao criar conta. Verifique os dados fornecidos.');
     } finally {
       setLoading(false);
     }

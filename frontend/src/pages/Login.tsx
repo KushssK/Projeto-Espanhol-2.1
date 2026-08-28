@@ -27,16 +27,60 @@ export const Login: React.FC = () => {
     setLoading(true);
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { requiresVerification, email: responseEmail } = response.data;
-      if (requiresVerification) {
-        navigate('/verify-email', { state: { email: responseEmail || email } });
+      const data = response.data;
+
+      // Login 2FA: credenciais válidas, mas precisa de código
+      if (data.requiresLoginVerification) {
+        navigate('/verify-email', {
+          state: {
+            email: data.email || email,
+            purpose: data.purpose || 'LOGIN',
+          },
+        });
         return;
       }
-      const { token, user } = response.data;
+
+      // Conta não verificada
+      if (data.requiresVerification) {
+        navigate('/verify-email', {
+          state: {
+            email: data.email || email,
+            purpose: data.purpose || 'REGISTER',
+          },
+        });
+        return;
+      }
+
+      // Login direto (admin criado via bootstrap — já verificado)
+      const { token, user } = data;
       login(token, user);
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Erro ao realizar login. Tente novamente.');
+      const errorData = err.response?.data;
+
+      // Login 2FA: credenciais válidas mas precisa de código (403 com requiresLoginVerification)
+      if (errorData?.requiresLoginVerification) {
+        navigate('/verify-email', {
+          state: {
+            email: errorData.email || email,
+            purpose: errorData.purpose || 'LOGIN',
+          },
+        });
+        return;
+      }
+
+      // Conta não verificada
+      if (errorData?.requiresVerification) {
+        navigate('/verify-email', {
+          state: {
+            email: errorData.email || email,
+            purpose: errorData.purpose || 'REGISTER',
+          },
+        });
+        return;
+      }
+
+      setError(errorData?.error || 'Erro ao realizar login. Tente novamente.');
     } finally {
       setLoading(false);
     }

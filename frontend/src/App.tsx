@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Navbar } from './components/Navbar'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -18,12 +18,26 @@ function App() {
   const checkAuth = useAuthStore((s) => s.checkAuth)
   const fetchSettings = useThemeStore((s) => s.fetchSettings)
   const isLoading = useAuthStore((s) => s.isLoading)
-  const isDark = useThemeStore((s) => s.isDark)
+  const [isDark, setIsDark] = useState(false)
 
   useEffect(() => {
     fetchSettings()
     checkAuth()
   }, [fetchSettings, checkAuth])
+
+  // Detect dark mode from system preference or document class
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const checkDark = () => setIsDark(document.documentElement.classList.contains('dark') || mq.matches)
+    checkDark()
+    mq.addEventListener('change', checkDark)
+    const observer = new MutationObserver(checkDark)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => {
+      mq.removeEventListener('change', checkDark)
+      observer.disconnect()
+    }
+  }, [])
 
   if (isLoading) {
     return (

@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { useThemeStore } from '../stores/useThemeStore';
 import { assetUrl } from '../services/api';
 import { BookOpen, Trophy, MessageSquare, ShieldAlert, LogOut, Sun, Moon, Menu, X, User as UserIcon, Library } from 'lucide-react';
+import { LogoutModal } from './LogoutModal';
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuthStore();
@@ -28,6 +29,8 @@ export const Navbar: React.FC = () => {
     }
   }, [darkMode]);
 
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -38,6 +41,7 @@ export const Navbar: React.FC = () => {
   };
 
   return (
+    <>
     <nav className="glass sticky top-0 z-50 px-6 py-4 flex items-center justify-between border-b border-[var(--border-color)]">
       {/* Logo & Brand */}
       <Link to="/" className="flex items-center gap-3 text-decoration-none">
@@ -107,7 +111,7 @@ export const Navbar: React.FC = () => {
               <span className="font-bold text-sm" style={{ color: 'var(--text-main)' }}>{user.username}</span>
             </div>
             <button 
-              onClick={handleLogout}
+              onClick={() => setShowLogoutModal(true)}
               className="p-2 rounded-full hover:bg-[var(--color-danger)] hover:text-white transition-colors cursor-pointer"
               style={{ color: 'var(--text-muted)', border: 'none', background: 'none' }}
               title="Sair"
@@ -174,7 +178,7 @@ export const Navbar: React.FC = () => {
                 <span className="font-bold text-sm">{user.username}</span>
               </div>
               <button 
-                onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
+                onClick={() => { setMobileMenuOpen(false); setShowLogoutModal(true); }}
                 className="flex items-center gap-2 font-bold text-[var(--color-danger)] cursor-pointer"
                 style={{ border: 'none', background: 'none' }}
               >
@@ -189,5 +193,12 @@ export const Navbar: React.FC = () => {
         </div>
       )}
     </nav>
+
+    <LogoutModal
+      isOpen={showLogoutModal}
+      onClose={() => setShowLogoutModal(false)}
+      onConfirm={handleLogout}
+    />
+    </>
   );
 };

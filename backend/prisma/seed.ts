@@ -1,13 +1,12 @@
 import { PrismaClient } from '../src/generated/prisma/client';
-import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 if (!process.env.DATABASE_URL) {
   console.error('DATABASE_URL não definida. Configure o .env antes de rodar o seed.');
   process.exit(1);
 }
 
-const adapter = new PrismaMariaDb(process.env.DATABASE_URL);
-
+const adapter = new PrismaPg(process.env.DATABASE_URL);
 const prisma = new PrismaClient({ adapter });
 
 const MODULES = [

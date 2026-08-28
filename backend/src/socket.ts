@@ -29,7 +29,7 @@ export const getIO = () => ioInstance;
 export const setupSocket = (server: HttpServer) => {
   const io = new SocketIOServer(server, {
     cors: {
-      origin: process.env.CORS_ORIGIN || '*',
+      origin: process.env.CORS_ORIGIN || false,
       methods: ['GET', 'POST'],
     },
     maxHttpBufferSize: 20 * 1024 * 1024, // 20MB — compatível com o limite de upload

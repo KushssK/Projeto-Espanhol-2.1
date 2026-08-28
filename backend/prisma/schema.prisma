@@ -7,7 +7,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
 }
 
 // ============================================================================
@@ -17,6 +17,13 @@ enum Role {
   STUDENT
   TEACHER
   ADMIN
+}
+
+// Finalidade do código de verificação
+enum VerificationPurpose {
+  REGISTER
+  LOGIN
+  ADMIN_LOGIN
 }
 
 model User {
@@ -30,15 +37,32 @@ model User {
   avatarUrl      String?
   isBanned       Boolean   @default(false)
   isVerified     Boolean   @default(false) // E-mail verificado
-  verificationCode   String?  // Código de verificação numérico
-  verificationExpires DateTime? // Expiração do código (10 min)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   // Relacionamentos
-  progress       UserProgress[]
-  roomMembers    RoomMember[]
-  messages       Message[]
+  progress            UserProgress[]
+  roomMembers         RoomMember[]
+  messages            Message[]
+  verificationCodes   VerificationCode[]
+}
+
+// Tabela dedicada para códigos de verificação — hashes, finalidade, controle de tentativas
+model VerificationCode {
+  id          String              @id @default(uuid())
+  userId      String
+  codeHash    String              // SHA-256 do código (nunca armazenar em texto puro)
+  purpose     VerificationPurpose // REGISTER, LOGIN, ADMIN_LOGIN
+  attempts    Int                 @default(0)
+  maxAttempts Int                 @default(5)
+  isUsed      Boolean             @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime            @default(now())
+
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@index([expiresAt])
 }
 
 model Whitelist_CPF {

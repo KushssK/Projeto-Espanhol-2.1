@@ -5,6 +5,8 @@ import path from 'path';
 import fs from 'fs';
 import { createServer } from 'http';
 import { setupSocket } from './socket';
+import { cleanupExpiredCodes } from './lib/code';
+import { verifySmtpConnection } from './lib/email';
 
 // Rotas
 import authRoutes from './routes/auth.routes';
@@ -37,7 +39,7 @@ app.set('trust proxy', 1);
 
 // Middleware global
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: process.env.CORS_ORIGIN || false,
   credentials: true,
 }));
 app.use(express.json());
@@ -102,8 +104,26 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 const server = createServer(app);
 setupSocket(server);
 
-server.listen(port, () => {
+server.listen(port, async () => {
   console.log(`🚀 Espanhol em Rede API rodando na porta ${port}`);
   console.log(`📡 Socket.IO ativo`);
   console.log(`📁 Uploads servidos em /uploads`);
+
+  // Verificar conexão SMTP em produção
+  if (process.env.NODE_ENV === 'production' && process.env.SMTP_HOST) {
+    const smtpOk = await verifySmtpConnection();
+    console.log(smtpOk ? '✅ SMTP conectado' : '⚠️ SMTP não conectado — verifique as credenciais');
+  }
 });
+
+// Limpeza periódica de códigos expirados (a cada hora)
+setInterval(async () => {
+  try {
+    const deleted = await cleanupExpiredCodes();
+    if (deleted > 0) {
+      console.log(`🧹 ${deleted} código(s) expirado(s) removido(s)`);
+    }
+  } catch (error) {
+    console.error('Erro na limpeza de códigos expirados:', error);
+  }
+}, 60 * 60 * 1000).unref();

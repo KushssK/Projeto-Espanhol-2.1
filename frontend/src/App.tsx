@@ -7,6 +7,7 @@ import { useAuthStore } from './stores/useAuthStore'
 import { useThemeStore } from './stores/useThemeStore'
 import { LandingPage } from './pages/LandingPage'
 import { Dashboard } from './pages/Dashboard'
+import { ModulePage } from './pages/ModulePage'
 import { LessonView } from './pages/LessonView'
 import { Leaderboard } from './pages/Leaderboard'
 import { CommunityChat } from './pages/CommunityChat'
@@ -80,6 +81,7 @@ function App() {
         {/* Rotas protegidas (qualquer usuário autenticado) */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/modules/:id" element={<ModulePage />} />
           <Route path="/lessons/:id" element={<LessonView />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/chat" element={<CommunityChat />} />

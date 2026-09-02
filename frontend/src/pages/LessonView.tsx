@@ -92,11 +92,11 @@ export const LessonView: React.FC = () => {
       {/* Botão Voltar */}
       <div>
         <button 
-          onClick={() => navigate('/dashboard')} 
+          onClick={() => lesson?.moduleId ? navigate(`/modules/${lesson.moduleId}`) : navigate('/dashboard')}
           className="flex items-center gap-2 font-bold hover:opacity-80 cursor-pointer"
           style={{ color: 'var(--text-muted)', border: 'none', background: 'none' }}
         >
-          <ChevronLeft size={20} /> Voltar para os Módulos
+          <ChevronLeft size={20} /> Voltar ao Módulo
         </button>
       </div>
 
@@ -210,11 +210,11 @@ export const LessonView: React.FC = () => {
             </button>
           ) : (
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => lesson?.moduleId ? navigate(`/modules/${lesson.moduleId}`) : navigate('/dashboard')}
               className="btn-3d font-bold flex items-center gap-2"
               style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}
             >
-              Avançar Trilha <ArrowRight size={20} />
+              Voltar ao Módulo <ArrowRight size={20} />
             </button>
           )}
         </div>

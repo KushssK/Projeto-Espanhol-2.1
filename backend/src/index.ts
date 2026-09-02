@@ -5,8 +5,9 @@ import path from 'path';
 import fs from 'fs';
 import { createServer } from 'http';
 import { setupSocket } from './socket';
-import { seedEmailWhitelist } from './lib/email-whitelist-seed';
+import { seedModules } from './lib/seed-modules';
 import { seedConversacaoLessons } from './lib/seed-conversacao';
+import { seedEmailWhitelist } from './lib/email-whitelist-seed';
 
 // Rotas
 import authRoutes from './routes/auth.routes';
@@ -107,17 +108,24 @@ server.listen(port, async () => {
   console.log(`📡 Socket.IO ativo`);
   console.log(`📁 Uploads servidos em /uploads`);
 
-  // Seed da whitelist de e-mails (idempotente — seguro em cada restart)
+  // 1. Seed dos módulos oficiais (precisa existir antes das videoaulas)
   try {
-    await seedEmailWhitelist();
+    await seedModules();
   } catch (err) {
-    console.error('⚠️ Erro ao inicializar whitelist de e-mails (não bloqueante):', err);
+    console.error('⚠️ Erro ao semear módulos (não bloqueante):', err);
   }
 
-  // Seed das videoaulas do módulo Conversação (idempotente — seguro em cada restart)
+  // 2. Seed das videoaulas do módulo Conversação (depende do módulo "Conversação")
   try {
     await seedConversacaoLessons();
   } catch (err) {
     console.error('⚠️ Erro ao semear videoaulas de Conversação (não bloqueante):', err);
+  }
+
+  // 3. Seed da whitelist de e-mails
+  try {
+    await seedEmailWhitelist();
+  } catch (err) {
+    console.error('⚠️ Erro ao inicializar whitelist de e-mails (não bloqueante):', err);
   }
 });

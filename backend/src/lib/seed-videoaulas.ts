@@ -125,6 +125,46 @@ const EXPRESSOES_GIRIAS_VIDEOS: VideoData[] = [
 ];
 
 // ============================================================================
+// GRAMÁTICA — 22 vídeos
+// Playlist: https://www.youtube.com/playlist?list=PLUykcwhfihTc
+//
+// Ordem pedagógica:
+//  FUNDAMENTOS: Alfabeto → Substantivos → Artigos → Pronomes
+//  → Adjetivos → Advérbios → Preposições → Conjunções
+//  VERBOS: Conjugação Verbal → Ser e Estar → Ter e Haver
+//  TEMPOS: Presente Indicativo → Pretérito Perfeito →
+//  Pretérito Simples/Composto → Pretérito Pluscuamperfecto (x2) →
+//  Presente Subjuntivo → Futuro Simples
+//  ESTRUTURAS: Discurso Direto/Indireto → Voz Ativa/Passiva
+//  → Regras de Acentuação → Comparativos/Superlativos
+// ============================================================================
+
+const GRAMATICA_VIDEOS: VideoData[] = [
+  { orderIndex: 1, videoId: 'Og1gQJKd_AE', title: 'Alfabeto', url: 'https://www.youtube.com/watch?v=Og1gQJKd_AE', description: 'Aula sobre o alfabeto espanhol, incluindo a pronúncia de cada letra e sons especiais.' },
+  { orderIndex: 2, videoId: 'TTmyrSUX-sM', title: 'Substantivos', url: 'https://www.youtube.com/watch?v=TTmyrSUX-sM', description: 'Aula sobre substantivos em espanhol: gênero, número e classificação.' },
+  { orderIndex: 3, videoId: 'UOpoJstB3so', title: 'Artigos', url: 'https://www.youtube.com/watch?v=UOpoJstB3so', description: 'Aula sobre artigos definidos e indefinidos em espanhol: el, la, los, las, un, una, unos, unas.' },
+  { orderIndex: 4, videoId: 'Uya93WyFsMs', title: 'Pronomes Pessoais', url: 'https://www.youtube.com/watch?v=Uya93WyFsMs', description: 'Aula sobre pronomes pessoais em espanhol: sujetos, átonos e tónicos.' },
+  { orderIndex: 5, videoId: 'UUR5i7WGX2k', title: 'Adjetivos', url: 'https://www.youtube.com/watch?v=UUR5i7WGX2k', description: 'Aula sobre adjetivos em espanhol: concordância de gênero e número, posição na frase.' },
+  { orderIndex: 6, videoId: 'twQviKEkUDc', title: 'Advérbios', url: 'https://www.youtube.com/watch?v=twQviKEkUDc', description: 'Aula sobre advérbios em espanhol: de modo, tempo, lugar, intensidade.' },
+  { orderIndex: 7, videoId: '7lgI4Pj2TyE', title: 'Preposições', url: 'https://www.youtube.com/watch?v=7lgI4Pj2TyE', description: 'Aula sobre preposições em espanhol: a, de, en, por, para, con, sin e suas combinações.' },
+  { orderIndex: 8, videoId: 'MbI0r4HquC0', title: 'Conjunções', url: 'https://www.youtube.com/watch?v=MbI0r4HquC0', description: 'Aula sobre conjunções em espanhol: coordenativas, subordinativas e suas funções.' },
+  { orderIndex: 9, videoId: 'J0ghKS1LZbY', title: 'Conjugação Verbal', url: 'https://www.youtube.com/watch?v=J0ghKS1LZbY', description: 'Aula sobre conjugação verbal em espanhol: terminações, regularidade e estrutura dos verbos.' },
+  { orderIndex: 10, videoId: '5hQhokEyaOk', title: 'Ser e Estar', url: 'https://www.youtube.com/watch?v=5hQhokEyaOk', description: 'Aula sobre a diferença entre ser e estar em espanhol: usos, contextos e exemplos práticos.' },
+  { orderIndex: 11, videoId: 'Owmjg8QYjCU', title: 'Ter e Haver', url: 'https://www.youtube.com/watch?v=Owmjg8QYjCU', description: 'Aula sobre os verbos ter (tener) e haver (haber) em espanhol: usos como verbo principal e auxiliar.' },
+  { orderIndex: 12, videoId: 'XzzJssljfUo', title: 'Tempo Verbal - Presente do Indicativo', url: 'https://www.youtube.com/watch?v=XzzJssljfUo', description: 'Aula sobre o presente do indicativo em espanhol: conjugação regular e irregular.' },
+  { orderIndex: 13, videoId: 'JTzpvXLImTg', title: 'Tempo Verbal - Pretérito Perfeito Simples e Pretérito Indefinido', url: 'https://www.youtube.com/watch?v=JTzpvXLImTg', description: 'Aula sobre o pretérito perfeito simples (indefinido) em espanhol para ações passadas completas.' },
+  { orderIndex: 14, videoId: 'Z5C-MkhW4UI', title: 'Tempo Verbal - Pretérito Simples e Pretérito Composto', url: 'https://www.youtube.com/watch?v=Z5C-MkhW4UI', description: 'Aula comparando o pretérito simples e o pretérito composto em espanhol.' },
+  { orderIndex: 15, videoId: '7QYXZOUlHhA', title: 'Tempo Verbal - Pretérito Pluscuamperfecto do Indicativo', url: 'https://www.youtube.com/watch?v=7QYXZOUlHhA', description: 'Aula sobre o pretérito pluscuamperfecto do indicativo: ações anteriores a outras no passado.' },
+  { orderIndex: 16, videoId: '6OAAkMnsje4', title: 'Tempo Verbal - Pretérito Pluscuamperfecto Composto', url: 'https://www.youtube.com/watch?v=6OAAkMnsje4', description: 'Aula sobre o pretérito pluscuamperfecto composto: forma composta e usos práticos.' },
+  { orderIndex: 17, videoId: 'ccpPqArhO_A', title: 'Tempo Verbal - Presente do Subjuntivo', url: 'https://www.youtube.com/watch?v=ccpPqArhO_A', description: 'Aula sobre o presente do subjuntivo em espanhol: hipóteses, desejos e orações subordinadas.' },
+  { orderIndex: 18, videoId: 'c64HuSyzGog', title: 'Tempo Verbal - Futuro Simples', url: 'https://www.youtube.com/watch?v=c64HuSyzGog', description: 'Aula sobre o futuro simples em espanhol: conjugação regular e irregular, usos e exemplos.' },
+  { orderIndex: 19, videoId: 'ysXzVHfAsto', title: 'Discurso Direto e Indireto', url: 'https://www.youtube.com/watch?v=ysXzVHfAsto', description: 'Aula sobre discurso direto e indireto em espanhol: como reportar falas de terceiros.' },
+  { orderIndex: 20, videoId: 'RtOoRfSbUlQ', title: 'Voz Ativa e Voz Passiva', url: 'https://www.youtube.com/watch?v=RtOoRfSbUlQ', description: 'Aula sobre voz ativa e voz passiva em espanhol: estrutura, formação e transformação de frases.' },
+  { orderIndex: 21, videoId: 'EIje77QYKuE', title: 'Regras de Acentuação', url: 'https://www.youtube.com/watch?v=EIje77QYKuE', description: 'Aula sobre as regras de acentuação em espanhol: palabras agudas, llanas, esdrújulas e sobresdrújulas.' },
+  { orderIndex: 22, videoId: 'b4R0UjrzESs', title: 'Comparativos e Superlativos', url: 'https://www.youtube.com/watch?v=b4R0UjrzESs', description: 'Aula sobre comparativos e superlativos em espanhol: mais, menos, tão quanto, o mais, o menos.' },
+];
+
+// ============================================================================
 // DADOS CENTRALIZADOS — adicione novos módulos aqui
 // ============================================================================
 
@@ -133,6 +173,7 @@ const ALL_MODULES: ModuleSeedData[] = [
   { moduleTitle: 'Cultura Hispânica', videos: CULTURA_HISPANICA_VIDEOS },
   { moduleTitle: 'Dicas de Aprendizagem', videos: DICAS_APRENDIZAGEM_VIDEOS },
   { moduleTitle: 'Expressões e Girias do Cotidiano', videos: EXPRESSOES_GIRIAS_VIDEOS },
+  { moduleTitle: 'Gramática', videos: GRAMATICA_VIDEOS },
 ];
 
 // ============================================================================

@@ -179,6 +179,43 @@ const LEITURA_COMPREENSACAO_VIDEOS: VideoData[] = [
 ];
 
 // ============================================================================
+// VOCABULÁRIO — 21 vídeos
+// Playlist: https://www.youtube.com/playlist?list=PLYinoxkUgJ6E
+//
+// Ordem pedagógica:
+//  FUNDAMENTOS: Números → Cores → Dias → Meses → Horas
+//  COTIDIANO: Alimentos → Bebidas → Casa → Roupas
+//  PESSOAS: Partes do Corpo → Família → Profissões
+//  MUNDO: Animais → Escola → Esportes → Clima
+//  AMBIENTE: Meio Ambiente → Cidade → Transporte → Viagem
+//  MODERNO: Tecnologia
+// ============================================================================
+
+const VOCABULARIO_VIDEOS: VideoData[] = [
+  { orderIndex: 1, videoId: '5cIiobAaLrQ', title: 'Números', url: 'https://www.youtube.com/watch?v=5cIiobAaLrQ', description: 'Vocabulário de números em espanhol: cardinais, ordinais e uso no dia a dia.' },
+  { orderIndex: 2, videoId: 'YSHh0Z9g__Q', title: 'Cores', url: 'https://www.youtube.com/watch?v=YSHh0Z9g__Q', description: 'Vocabulário de cores em espanhol: nomes, concordância e expressões com cores.' },
+  { orderIndex: 3, videoId: 'XMCNVD3s_YQ', title: 'Dias da Semana', url: 'https://www.youtube.com/watch?v=XMCNVD3s_YQ', description: 'Vocabulário dos dias da semana em espanhol e como usá-los em frases.' },
+  { orderIndex: 4, videoId: '316GkoHGuzI', title: 'Meses', url: 'https://www.youtube.com/watch?v=316GkoHGuzI', description: 'Vocabulário dos meses do ano em espanhol.' },
+  { orderIndex: 5, videoId: 'nAz8IBax83Y', title: 'Horas', url: 'https://www.youtube.com/watch?v=nAz8IBax83Y', description: 'Como dizer as horas em espanhol: horário formal, informal e expressões de tempo.' },
+  { orderIndex: 6, videoId: 'oi0NCfM0xag', title: 'Alimentos', url: 'https://www.youtube.com/watch?v=oi0NCfM0xag', description: 'Vocabulário de alimentos em espanhol: frutas, legumes, carnes e alimentos básicos.' },
+  { orderIndex: 7, videoId: '0B2VfGjqi8U', title: 'Bebidas', url: 'https://www.youtube.com/watch?v=0B2VfGjqi8U', description: 'Vocabulário de bebidas em espanhol: água, sucos, café, chá e expressões de pedidos.' },
+  { orderIndex: 8, videoId: '6eO0jg8EGec', title: 'Casa', url: 'https://www.youtube.com/watch?v=6eO0jg8EGec', description: 'Vocabulário da casa em espanhol: cômodos, móveis e objetos do lar.' },
+  { orderIndex: 9, videoId: '0qhI6c-k9iU', title: 'Roupas', url: 'https://www.youtube.com/watch?v=0qhI6c-k9iU', description: 'Vocabulário de roupas e acessórios em espanhol.' },
+  { orderIndex: 10, videoId: 'eIGLUXmwczM', title: 'Partes do Corpo Humano', url: 'https://www.youtube.com/watch?v=eIGLUXmwczM', description: 'Vocabulário das partes do corpo humano em espanhol.' },
+  { orderIndex: 11, videoId: 'Sktq_ktMlnA', title: 'Membros da Família', url: 'https://www.youtube.com/watch?v=Sktq_ktMlnA', description: 'Vocabulário de membros da família em espanhol: pai, mãe, irmãos, avós e parentes.' },
+  { orderIndex: 12, videoId: 'fsKmX9GK0wU', title: 'Profissões', url: 'https://www.youtube.com/watch?v=fsKmX9GK0wU', description: 'Vocabulário de profissões em espanhol: nomes de empregos e expressões profissionais.' },
+  { orderIndex: 13, videoId: 'Lwrfeh0yXf8', title: 'Animais', url: 'https://www.youtube.com/watch?v=Lwrfeh0yXf8', description: 'Vocabulário de animais em espanhol: domésticos, selvagens e fazenda.' },
+  { orderIndex: 14, videoId: 'FpFtiGxknz0', title: 'Escola', url: 'https://www.youtube.com/watch?v=FpFtiGxknz0', description: 'Vocabulário da escola em espanhol: materiais, ambientes e expressões escolares.' },
+  { orderIndex: 15, videoId: 'bRggDj2ZXZk', title: 'Esportes', url: 'https://www.youtube.com/watch?v=bRggDj2ZXZk', description: 'Vocabulário de esportes em espanhol: modalidades, equipamentos e expressões esportivas.' },
+  { orderIndex: 16, videoId: 'pby-EZNEd8U', title: 'Clima', url: 'https://www.youtube.com/watch?v=pby-EZNEd8U', description: 'Vocabulário de clima e tempo em espanhol: sol, chuva, frio, calor e estações do ano.' },
+  { orderIndex: 17, videoId: 'oYVPxeSMV_8', title: 'Meio Ambiente', url: 'https://www.youtube.com/watch?v=oYVPxeSMV_8', description: 'Vocabulário de meio ambiente em espanhol: natureza, ecologia e sustainabilidade.' },
+  { orderIndex: 18, videoId: 'nt0VJKc-p74', title: 'Cidade', url: 'https://www.youtube.com/watch?v=nt0VJKc-p74', description: 'Vocabulário da cidade em espanhol: ruas, prédios, lugares públicos e serviços urbanos.' },
+  { orderIndex: 19, videoId: '5d9BqMfBGZw', title: 'Meios de Transporte', url: 'https://www.youtube.com/watch?v=5d9BqMfBGZw', description: 'Vocabulário de meios de transporte em espanhol: carro, ônibus, avião, trem e metro.' },
+  { orderIndex: 20, videoId: 'Bd7gtcjzohI', title: 'Viagem', url: 'https://www.youtube.com/watch?v=Bd7gtcjzohI', description: 'Vocabulário de viagem em espanhol: aeroporto, hotel, documentos e expressões de turismo.' },
+  { orderIndex: 21, videoId: 'BdUNV189OKk', title: 'Tecnologia', url: 'https://www.youtube.com/watch?v=BdUNV189OKk', description: 'Vocabulário de tecnologia em espanhol: dispositivos, aplicativos e termos digitais.' },
+];
+
+// ============================================================================
 // DADOS CENTRALIZADOS — adicione novos módulos aqui
 // ============================================================================
 
@@ -189,6 +226,7 @@ const ALL_MODULES: ModuleSeedData[] = [
   { moduleTitle: 'Expressões e Girias do Cotidiano', videos: EXPRESSOES_GIRIAS_VIDEOS },
   { moduleTitle: 'Gramática', videos: GRAMATICA_VIDEOS },
   { moduleTitle: 'Leitura e Compreensão de texto', videos: LEITURA_COMPREENSACAO_VIDEOS },
+  { moduleTitle: 'Vocabulário', videos: VOCABULARIO_VIDEOS },
 ];
 
 // ============================================================================

@@ -6,7 +6,7 @@ import fs from 'fs';
 import { createServer } from 'http';
 import { setupSocket } from './socket';
 import { seedModules } from './lib/seed-modules';
-import { seedConversacaoLessons } from './lib/seed-conversacao';
+import { seedAllLessons } from './lib/seed-videoaulas';
 import { seedEmailWhitelist } from './lib/email-whitelist-seed';
 
 // Rotas
@@ -115,11 +115,11 @@ server.listen(port, async () => {
     console.error('⚠️ Erro ao semear módulos (não bloqueante):', err);
   }
 
-  // 2. Seed das videoaulas do módulo Conversação (depende do módulo "Conversação")
+  // 2. Seed de videoaulas de todos os módulos (depende dos módulos existirem)
   try {
-    await seedConversacaoLessons();
+    await seedAllLessons();
   } catch (err) {
-    console.error('⚠️ Erro ao semear videoaulas de Conversação (não bloqueante):', err);
+    console.error('⚠️ Erro ao semear videoaulas (não bloqueante):', err);
   }
 
   // 3. Seed da whitelist de e-mails

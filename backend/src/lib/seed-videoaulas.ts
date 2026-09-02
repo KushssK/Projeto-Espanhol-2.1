@@ -216,6 +216,35 @@ const VOCABULARIO_VIDEOS: VideoData[] = [
 ];
 
 // ============================================================================
+// PRONÚNCIA — 13 vídeos
+// Playlist: https://www.youtube.com/playlist?list=PLA42DM-4d_Yc
+//
+// Ordem pedagógica:
+//  FUNDAMENTOS: Som das Letras → Sons do B e V → Sons do R e RR
+//  LETRAS ESPECÍFICAS: Pronúncia do G → Pronúncia LL → Pronúncia J
+//  → Pronúncia Y
+//  ESTRUTURAS: Sons do R e J → Sons mais Comuns
+//  CONTEXTO: 5 Erros Comuns → Intonação e Ritmo
+//  APLICAÇÃO: Curso Aula 1 → Pronúncia por País
+// ============================================================================
+
+const PRONUNCIA_VIDEOS: VideoData[] = [
+  { orderIndex: 1, videoId: 'abl_ADJDIgk', title: 'Som das Letras', url: 'https://www.youtube.com/watch?v=abl_ADJDIgk', description: 'Aula sobre o som de cada letra do alfabeto espanhol. Fundamentos da pronúncia.' },
+  { orderIndex: 2, videoId: 'shsb68fnsqM', title: 'Sons do B e V', url: 'https://www.youtube.com/watch?v=shsb68fnsqM', description: 'Aula sobre a pronúncia das letras B e V em espanhol — sons iguais, dúvida muito comum.' },
+  { orderIndex: 3, videoId: 'WOiVkKW4kP8', title: 'Sons do R e RR', url: 'https://www.youtube.com/watch?v=WOiVkKW4kP8', description: 'Aula sobre a pronúncia do R simples e do RR em espanhol. Exercícios práticos.' },
+  { orderIndex: 4, videoId: 'iak9D28UDQc', title: 'Pronúncia do G', url: 'https://www.youtube.com/watch?v=iak9D28UDQc', description: 'Aula sobre a pronúncia da letra G em espanhol antes de diferentes vogais.' },
+  { orderIndex: 5, videoId: '2SMOfxZ1ax4', title: 'Aprenda a Pronunciar LL em Espanhol', url: 'https://www.youtube.com/watch?v=2SMOfxZ1ax4', description: 'Aula sobre a pronúncia da letra LL em espanhol. Exercícios práticos.' },
+  { orderIndex: 6, videoId: 'eb8n-Nr6LEY', title: 'Como Pronunciar a Letra J em Espanhol', url: 'https://www.youtube.com/watch?v=eb8n-Nr6LEY', description: 'Aula sobre a pronúncia da letra J em espanhol. Sons aspirados e regionais.' },
+  { orderIndex: 7, videoId: 'F_lBa2S_1no', title: 'Como Pronunciar Y em Espanhol', url: 'https://www.youtube.com/watch?v=F_lBa2S_1no', description: 'Aula sobre a pronúncia da letra Y em espanhol. Variantes e exercícios.' },
+  { orderIndex: 8, videoId: 'K8hq7iBAHa8', title: 'Sons do R e J', url: 'https://www.youtube.com/watch?v=K8hq7iBAHa8', description: 'Aula comparativa entre os sons do R e do J em espanhol. Diferenças e prática.' },
+  { orderIndex: 9, videoId: '9RDlLvHSTxY', title: 'Sons mais Comuns', url: 'https://www.youtube.com/watch?v=9RDlLvHSTxY', description: 'Aula sobre os sons mais comuns e frequentes na língua espanhola. Prática geral.' },
+  { orderIndex: 10, videoId: 'pDTVXV5wFn8', title: '5 Erros ao Falar Espanhol mais Comuns', url: 'https://www.youtube.com/watch?v=pDTVXV5wFn8', description: 'Os 5 erros de pronúncia mais comuns ao falar espanhol. Como evitá-los.' },
+  { orderIndex: 11, videoId: 'rGnY8bRNpPI', title: 'Entonação e Ritmo em Espanhol', url: 'https://www.youtube.com/watch?v=rGnY8bRNpPI', description: 'Aula sobre entonação e ritmo na fala espanhola. Como soar mais natural.' },
+  { orderIndex: 12, videoId: 'f8J4qjAVpgc', title: 'Curso de Espanhol Online — Aula 1: Sons, Letras e Dicas', url: 'https://www.youtube.com/watch?v=f8J4qjAVpgc', description: 'Primeira aula do curso online: aprenda os sons, letras e dicas para falar bem em espanhol.' },
+  { orderIndex: 13, videoId: 'L__Vtz2PvMk', title: 'Pronúncia dos Países Hispanohablantes', url: 'https://www.youtube.com/watch?v=L__Vtz2PvMk', description: 'Aula sobre as diferenças de pronúncia entre os países de língua espanhola.' },
+];
+
+// ============================================================================
 // DADOS CENTRALIZADOS — adicione novos módulos aqui
 // ============================================================================
 
@@ -226,6 +255,7 @@ const ALL_MODULES: ModuleSeedData[] = [
   { moduleTitle: 'Expressões e Girias do Cotidiano', videos: EXPRESSOES_GIRIAS_VIDEOS },
   { moduleTitle: 'Gramática', videos: GRAMATICA_VIDEOS },
   { moduleTitle: 'Leitura e Compreensão de texto', videos: LEITURA_COMPREENSACAO_VIDEOS },
+  { moduleTitle: 'Pronúncia', videos: PRONUNCIA_VIDEOS },
   { moduleTitle: 'Vocabulário', videos: VOCABULARIO_VIDEOS },
 ];
 

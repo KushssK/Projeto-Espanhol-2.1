@@ -103,6 +103,28 @@ const DICAS_APRENDIZAGEM_VIDEOS: VideoData[] = [
 ];
 
 // ============================================================================
+// EXPRESSÕES E GÍRIAS DO COTIDIANO — 6 vídeos
+// Playlist: https://www.youtube.com/playlist?list=PLV_LcqpNBjGw
+//
+// Ordem pedagógica:
+//  1. Diferenças Europeu vs Latino — contexto linguístico
+//  2. Falsos Cognatos — erros comuns a evitar
+//  3. Expressões do Dia a Dia — expressões básicas
+//  4. 100 Frases do Cotidiano — repertório mais amplo
+//  5. Gírias mais Comuns — gírias frequentes
+//  6. 10 Gírias Populares — gírias adicionais
+// ============================================================================
+
+const EXPRESSOES_GIRIAS_VIDEOS: VideoData[] = [
+  { orderIndex: 1, videoId: 'GhJbS7hry_A', title: 'Diferenças Entre o Espanhol Europeu e Latino', url: 'https://www.youtube.com/watch?v=GhJbS7hry_A', description: 'Aula sobre as principais diferenças entre o espanhol da Espanha e o espanhol latino-americano: vocabulário, pronúncia e expressões.' },
+  { orderIndex: 2, videoId: '7gn7qO09gwk', title: 'Falsos Cognatos', url: 'https://www.youtube.com/watch?v=7gn7qO09gwk', description: 'Aula sobre falsos cognatos em espanhol: palavras que parecem iguais ao português mas têm significado diferente.' },
+  { orderIndex: 3, videoId: 'mqX07D8SlYo', title: 'Expressões do Dia a Dia', url: 'https://www.youtube.com/watch?v=mqX07D8SlYo', description: 'Aula com as expressões mais usadas no dia a dia em espanhol para conversar naturalmente.' },
+  { orderIndex: 4, videoId: '08OKq3Qg6sY', title: '100 Frases do Cotidiano', url: 'https://www.youtube.com/watch?v=08OKq3Qg6sY', description: '100 frases prontas do cotidiano em espanhol para usar em situações reais do dia a dia.' },
+  { orderIndex: 5, videoId: '7eXsH1HlPU0', title: 'Gírias mais Comuns', url: 'https://www.youtube.com/watch?v=7eXsH1HlPU0', description: 'Aula sobre as gírias mais comuns e frequentes no espanhol falado na vida real.' },
+  { orderIndex: 6, videoId: 'jY7A2Gxbd1w', title: '10 Gírias Populares', url: 'https://www.youtube.com/watch?v=jY7A2Gxbd1w', description: '10 gírias populares em espanhol que todo estudante deve conhecer para entender conversas nativas.' },
+];
+
+// ============================================================================
 // DADOS CENTRALIZADOS — adicione novos módulos aqui
 // ============================================================================
 
@@ -110,6 +132,7 @@ const ALL_MODULES: ModuleSeedData[] = [
   { moduleTitle: 'Conversação', videos: CONVERSACAO_VIDEOS },
   { moduleTitle: 'Cultura Hispânica', videos: CULTURA_HISPANICA_VIDEOS },
   { moduleTitle: 'Dicas de Aprendizagem', videos: DICAS_APRENDIZAGEM_VIDEOS },
+  { moduleTitle: 'Expressões e Girias do Cotidiano', videos: EXPRESSOES_GIRIAS_VIDEOS },
 ];
 
 // ============================================================================

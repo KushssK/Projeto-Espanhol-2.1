@@ -21,6 +21,7 @@ const WHITELIST_ENTRIES: Array<{ email: string; role: 'ADMIN' | 'TEACHER' }> = [
 
 export async function seedEmailWhitelist(): Promise<void> {
   let inserted = 0;
+  let updated = 0;
   let skipped = 0;
 
   for (const entry of WHITELIST_ENTRIES) {
@@ -29,11 +30,20 @@ export async function seedEmailWhitelist(): Promise<void> {
 
       const exists = await prisma.whitelistEmail.findUnique({
         where: { email: normalizedEmail },
-        select: { email: true },
+        select: { email: true, role: true },
       });
 
       if (exists) {
-        skipped++;
+        // Se o e-mail já existe mas com role diferente, forçar para a role correta
+        if (exists.role !== entry.role) {
+          await prisma.whitelistEmail.update({
+            where: { email: normalizedEmail },
+            data: { role: entry.role },
+          });
+          updated++;
+        } else {
+          skipped++;
+        }
         continue;
       }
 
@@ -47,7 +57,11 @@ export async function seedEmailWhitelist(): Promise<void> {
     }
   }
 
-  if (inserted > 0 || skipped > 0) {
-    console.log(`🔐 Whitelist de e-mails: ${inserted} registro(s) inserido(s), ${skipped} já existente(s).`);
+  if (inserted > 0 || updated > 0 || skipped > 0) {
+    const parts: string[] = [];
+    if (inserted > 0) parts.push(`${inserted} inserido(s)`);
+    if (updated > 0) parts.push(`${updated} atualizado(s)`);
+    if (skipped > 0) parts.push(`${skipped} já existente(s)`);
+    console.log(`🔐 Whitelist de e-mails: ${parts.join(', ')}.`);
   }
 }

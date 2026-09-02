@@ -4,18 +4,18 @@ import { AuthRequest } from '../middlewares/auth.middleware';
 
 // ============================================================================
 // GET /api/lessons/module/:moduleId — Listar aulas de um módulo
+// Admin/Teacher com ?includeDeleted=true veem aulas excluídas também
 // ============================================================================
 export const getLessonsByModule = async (req: AuthRequest, res: Response) => {
   try {
     const moduleId = req.params.moduleId as string;
-
-    // Admin/Teacher veem todas as aulas (inclusive rascunhos)
-    // Students veem apenas aulas publicadas
     const isStaff = req.user?.role === 'ADMIN' || req.user?.role === 'TEACHER';
+    const includeDeleted = isStaff && req.query.includeDeleted === 'true';
 
     const lessons = await prisma.lesson.findMany({
       where: {
         moduleId,
+        ...(includeDeleted ? {} : { deletedAt: null }),
         ...(isStaff ? {} : { published: true }),
       },
       orderBy: { orderIndex: 'asc' },
@@ -29,6 +29,26 @@ export const getLessonsByModule = async (req: AuthRequest, res: Response) => {
     return res.status(200).json(lessons);
   } catch (error) {
     console.error('Erro ao buscar aulas:', error);
+    return res.status(500).json({ error: 'Erro interno no servidor' });
+  }
+};
+
+// ============================================================================
+// GET /api/lessons/deleted — Listar aulas excluídas (Admin/Teacher)
+// ============================================================================
+export const getDeletedLessons = async (req: AuthRequest, res: Response) => {
+  try {
+    const lessons = await prisma.lesson.findMany({
+      where: { deletedAt: { not: null } },
+      orderBy: { deletedAt: 'desc' },
+      include: {
+        module: { select: { id: true, title: true } },
+      },
+    });
+
+    return res.status(200).json(lessons);
+  } catch (error) {
+    console.error('Erro ao buscar aulas excluídas:', error);
     return res.status(500).json({ error: 'Erro interno no servidor' });
   }
 };
@@ -56,6 +76,14 @@ export const getLessonById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Aula não encontrada.' });
     }
 
+    // Se a aula está soft-deletada, só staff pode ver
+    if (lesson.deletedAt) {
+      const isStaff = req.user?.role === 'ADMIN' || req.user?.role === 'TEACHER';
+      if (!isStaff) {
+        return res.status(404).json({ error: 'Aula não encontrada.' });
+      }
+    }
+
     return res.status(200).json(lesson);
   } catch (error) {
     console.error('Erro ao buscar aula:', error);
@@ -78,6 +106,19 @@ export const createLesson = async (req: AuthRequest, res: Response) => {
     const moduleExists = await prisma.module.findUnique({ where: { id: moduleId } });
     if (!moduleExists) {
       return res.status(404).json({ error: 'Módulo não encontrado.' });
+    }
+
+    // Verificar duplicata por videoUrl (ignorar aulas soft-deletadas)
+    if (videoUrl) {
+      const existing = await prisma.lesson.findFirst({
+        where: {
+          videoUrl,
+          deletedAt: null,
+        },
+      });
+      if (existing) {
+        return res.status(409).json({ error: 'Já existe uma aula com esta URL de vídeo.' });
+      }
     }
 
     const lesson = await prisma.lesson.create({
@@ -112,11 +153,29 @@ export const updateLesson = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Aula não encontrada.' });
     }
 
+    if (existing.deletedAt) {
+      return res.status(400).json({ error: 'Não é possível editar uma aula excluída. Restaure-a primeiro.' });
+    }
+
     // Se está mudando de módulo, verificar se o novo módulo existe
     if (moduleId && moduleId !== existing.moduleId) {
       const moduleExists = await prisma.module.findUnique({ where: { id: moduleId } });
       if (!moduleExists) {
         return res.status(404).json({ error: 'Módulo não encontrado.' });
+      }
+    }
+
+    // Verificar duplicata por videoUrl (se mudou)
+    if (videoUrl && videoUrl !== existing.videoUrl) {
+      const duplicate = await prisma.lesson.findFirst({
+        where: {
+          videoUrl,
+          id: { not: id },
+          deletedAt: null,
+        },
+      });
+      if (duplicate) {
+        return res.status(409).json({ error: 'Já existe outra aula com esta URL de vídeo.' });
       }
     }
 
@@ -141,7 +200,8 @@ export const updateLesson = async (req: AuthRequest, res: Response) => {
 };
 
 // ============================================================================
-// DELETE /api/lessons/:id — Deletar aula (Admin)
+// DELETE /api/lessons/:id — Soft delete (Admin)
+// Marca deletedAt em vez de deletar permanentemente
 // ============================================================================
 export const deleteLesson = async (req: AuthRequest, res: Response) => {
   try {
@@ -152,6 +212,67 @@ export const deleteLesson = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Aula não encontrada.' });
     }
 
+    if (existing.deletedAt) {
+      return res.status(400).json({ error: 'Aula já está excluída.' });
+    }
+
+    await prisma.lesson.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+
+    return res.status(200).json({ message: 'Aula excluída (exclusão lógica). Pode ser restaurada.' });
+  } catch (error) {
+    console.error('Erro ao excluir aula:', error);
+    return res.status(500).json({ error: 'Erro interno no servidor' });
+  }
+};
+
+// ============================================================================
+// PUT /api/lessons/:id/restore — Restaurar aula excluída (Admin)
+// ============================================================================
+export const restoreLesson = async (req: AuthRequest, res: Response) => {
+  try {
+    const id = req.params.id as string;
+
+    const existing = await prisma.lesson.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ error: 'Aula não encontrada.' });
+    }
+
+    if (!existing.deletedAt) {
+      return res.status(400).json({ error: 'Aula não está excluída.' });
+    }
+
+    await prisma.lesson.update({
+      where: { id },
+      data: { deletedAt: null },
+    });
+
+    return res.status(200).json({ message: 'Aula restaurada com sucesso.' });
+  } catch (error) {
+    console.error('Erro ao restaurar aula:', error);
+    return res.status(500).json({ error: 'Erro interno no servidor' });
+  }
+};
+
+// ============================================================================
+// DELETE /api/lessons/:id/hard — Exclusão definitiva (Admin)
+// Só funciona em aulas já soft-deletadas
+// ============================================================================
+export const hardDeleteLesson = async (req: AuthRequest, res: Response) => {
+  try {
+    const id = req.params.id as string;
+
+    const existing = await prisma.lesson.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ error: 'Aula não encontrada.' });
+    }
+
+    if (!existing.deletedAt) {
+      return res.status(400).json({ error: 'Exclusão definitiva só é permitida para aulas já excluídas logicamente.' });
+    }
+
     // Cascade: apagar attachments e progresso vinculados
     await prisma.$transaction([
       prisma.attachment.deleteMany({ where: { lessonId: id } }),
@@ -159,9 +280,9 @@ export const deleteLesson = async (req: AuthRequest, res: Response) => {
       prisma.lesson.delete({ where: { id } }),
     ]);
 
-    return res.status(200).json({ message: 'Aula excluída com sucesso.' });
+    return res.status(200).json({ message: 'Aula excluída definitivamente.' });
   } catch (error) {
-    console.error('Erro ao excluir aula:', error);
+    console.error('Erro ao excluir aula definitivamente:', error);
     return res.status(500).json({ error: 'Erro interno no servidor' });
   }
 };

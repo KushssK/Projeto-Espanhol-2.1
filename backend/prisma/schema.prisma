@@ -82,14 +82,15 @@ model Category {
 }
 
 model Lesson {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   moduleId    String
   categoryId  String?
   title       String
-  content     String   @db.Text
-  videoUrl    String?  // Link de plataforma terceira (YouTube, Vimeo)
-  published   Boolean  @default(false) // Se true, a aula fica visível para alunos
-  orderIndex  Int      @default(0)
+  content     String    @db.Text
+  videoUrl    String?   // Link de plataforma terceira (YouTube, Vimeo)
+  published   Boolean   @default(false) // Se true, a aula fica visível para alunos
+  orderIndex  Int       @default(0)
+  deletedAt   DateTime? // Soft delete — aula excluída mas recuperável
   
   module      Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)

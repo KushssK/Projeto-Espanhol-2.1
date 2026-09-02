@@ -4,7 +4,7 @@ import { useThemeStore } from '../stores/useThemeStore';
 import { YouTubePlayer, extractYouTubeId } from '../components/YouTubePlayer';
 import {
   LayoutDashboard, FolderTree, Library, ShieldCheck, Users, Palette,
-  Plus, Trash2, ArrowUp, ArrowDown, X, Check, Save, Upload, Eye, Ban, RefreshCw, FileText, Play, ExternalLink
+  Plus, Trash2, ArrowUp, ArrowDown, X, Check, Save, Upload, Eye, Ban, RefreshCw, FileText, ExternalLink, RotateCcw
 } from 'lucide-react';
 
 // ============================================================================
@@ -21,16 +21,15 @@ interface ModuleItem {
 interface LessonItem {
   id: string;
   title: string;
+  content: string;
   orderIndex: number;
   published: boolean;
   videoUrl: string | null;
+  deletedAt: string | null;
+  module?: { id: string; title: string };
 }
 
-interface CategoryItem {
-  id: string;
-  title: string;
-  orderIndex: number;
-}
+
 
 interface MediaItem {
   id: string;
@@ -109,13 +108,11 @@ const IconBtn: React.FC<{ onClick?: () => void; title?: string; danger?: boolean
   </button>
 );
 
-// extractYouTubeId é importado de '../components/YouTubePlayer'
-
 // ============================================================================
 // App
 // ============================================================================
 
-type Tab = 'overview' | 'content' | 'videos' | 'media' | 'whitelist' | 'users' | 'appearance';
+type Tab = 'overview' | 'content' | 'media' | 'whitelist' | 'users' | 'appearance';
 
 export const AdminPanel: React.FC = () => {
   const [tab, setTab] = useState<Tab>('overview');
@@ -123,8 +120,7 @@ export const AdminPanel: React.FC = () => {
 
   const tabs: Array<{ key: Tab; label: string; icon: React.ReactNode }> = [
     { key: 'overview', label: 'Visão Geral', icon: <LayoutDashboard size={16} /> },
-    { key: 'content', label: 'Módulos & Aulas', icon: <FolderTree size={16} /> },
-    { key: 'videos', label: 'Videoaulas', icon: <Play size={16} /> },
+    { key: 'content', label: 'Conteúdo (CMS)', icon: <FolderTree size={16} /> },
     { key: 'media', label: 'Acervo', icon: <Library size={16} /> },
     { key: 'whitelist', label: 'Whitelist E-mails', icon: <ShieldCheck size={16} /> },
     { key: 'users', label: 'Usuários', icon: <Users size={16} /> },
@@ -160,7 +156,6 @@ export const AdminPanel: React.FC = () => {
 
       {tab === 'overview' && <OverviewTab themeColor={themeColor} onGo={setTab} />}
       {tab === 'content' && <ContentTab themeColor={themeColor} />}
-      {tab === 'videos' && <VideoLessonsTab themeColor={themeColor} />}
       {tab === 'media' && <MediaTab themeColor={themeColor} />}
       {tab === 'whitelist' && <WhitelistEmailTab themeColor={themeColor} />}
       {tab === 'users' && <UsersTab themeColor={themeColor} />}
@@ -219,8 +214,7 @@ const OverviewTab: React.FC<{ themeColor: string; onGo: (t: Tab) => void }> = ({
       <Card title="Acesso rápido">
         <div className="flex flex-wrap gap-3">
           {[
-            { t: 'content' as Tab, label: 'Gerenciar Módulos e Aulas' },
-            { t: 'videos' as Tab, label: 'Gerenciar Videoaulas' },
+            { t: 'content' as Tab, label: 'Gerenciar Conteúdo (CMS)' },
             { t: 'whitelist' as Tab, label: 'Whitelist de E-mails' },
             { t: 'users' as Tab, label: 'Usuários e Banimentos' },
             { t: 'appearance' as Tab, label: 'Personalizar Tema e Logo' },
@@ -248,18 +242,23 @@ const OverviewTab: React.FC<{ themeColor: string; onGo: (t: Tab) => void }> = ({
 };
 
 // ============================================================================
-// Módulos & Aulas (CMS com reordenação)
+// Conteúdo (CMS) — Módulos + Aulas com Soft Delete
 // ============================================================================
 
 const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
   const [modules, setModules] = useState<ModuleItem[]>([]);
   const [lessonsByModule, setLessonsByModule] = useState<Record<string, LessonItem[]>>({});
-  const [categoriesByModule, setCategoriesByModule] = useState<Record<string, CategoryItem[]>>({});
+  const [deletedLessons, setDeletedLessons] = useState<LessonItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showDeleted, setShowDeleted] = useState(false);
 
   // Formulários
   const [showCreateModule, setShowCreateModule] = useState(false);
   const [moduleForm, setModuleForm] = useState({ title: '', description: '' });
+
+  // Modal de edição de aula
+  const [editingLesson, setEditingLesson] = useState<LessonItem | null>(null);
+  const [editForm, setEditForm] = useState({ title: '', content: '', videoUrl: '', moduleId: '', orderIndex: '0', published: true });
 
   const loadModules = useCallback(async () => {
     try {
@@ -278,14 +277,19 @@ const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
 
   const loadModuleDetail = async (moduleId: string) => {
     try {
-      const [lessonsRes, categoriesRes] = await Promise.all([
-        api.get(`/lessons/module/${moduleId}`),
-        api.get(`/categories/module/${moduleId}`),
-      ]);
+      const lessonsRes = await api.get(`/lessons/module/${moduleId}?includeDeleted=true`);
       setLessonsByModule((prev) => ({ ...prev, [moduleId]: lessonsRes.data }));
-      setCategoriesByModule((prev) => ({ ...prev, [moduleId]: categoriesRes.data }));
     } catch (error) {
-      console.error('Erro ao carregar detalhes do módulo:', error);
+      console.error('Erro ao carregar aulas do módulo:', error);
+    }
+  };
+
+  const loadDeletedLessons = async () => {
+    try {
+      const res = await api.get('/lessons/admin/deleted');
+      setDeletedLessons(res.data);
+    } catch (error) {
+      console.error('Erro ao carregar aulas excluídas:', error);
     }
   };
 
@@ -331,25 +335,106 @@ const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
     void reorder(next.map((m) => m.id), '/modules/reorder');
   };
 
+  // Editar aula
+  const openEditLesson = (lesson: LessonItem) => {
+    setEditForm({
+      title: lesson.title,
+      content: lesson.content,
+      videoUrl: lesson.videoUrl || '',
+      moduleId: modules.find((m) => lessonsByModule[m.id]?.some((l) => l.id === lesson.id))?.id || '',
+      orderIndex: String(lesson.orderIndex),
+      published: lesson.published,
+    });
+    setEditingLesson(lesson);
+  };
+
+  const handleEditLesson = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLesson) return;
+    try {
+      await api.put(`/lessons/${editingLesson.id}`, {
+        title: editForm.title,
+        content: editForm.content,
+        videoUrl: editForm.videoUrl || null,
+        moduleId: editForm.moduleId,
+        orderIndex: parseInt(editForm.orderIndex, 10) || 0,
+        published: editForm.published,
+      });
+      setEditingLesson(null);
+      // Reload the module that contains this lesson
+      if (editForm.moduleId) await loadModuleDetail(editForm.moduleId);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao atualizar aula.');
+    }
+  };
+
+  // Soft delete
+  const handleSoftDelete = async (lessonId: string, moduleId: string) => {
+    if (!window.confirm('Excluir esta aula? Ela será ocultada dos alunos mas pode ser restaurada depois.')) return;
+    try {
+      await api.delete(`/lessons/${lessonId}`);
+      await loadModuleDetail(moduleId);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao excluir aula.');
+    }
+  };
+
+  // Restaurar
+  const handleRestore = async (lessonId: string, moduleId?: string) => {
+    try {
+      await api.put(`/lessons/${lessonId}/restore`);
+      if (moduleId) await loadModuleDetail(moduleId);
+      await loadDeletedLessons();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao restaurar aula.');
+    }
+  };
+
+  // Exclusão definitiva
+  const handleHardDelete = async (lessonId: string) => {
+    if (!window.confirm('⚠️ EXCLUSÃO DEFINITIVA: Esta aula será apagada para sempre. Tem certeza?')) return;
+    try {
+      await api.delete(`/lessons/${lessonId}/hard`);
+      await loadDeletedLessons();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao excluir aula definitivamente.');
+    }
+  };
+
   if (loading) {
     return <p className="text-center py-16" style={{ color: 'var(--text-muted)' }}>Carregando conteúdo...</p>;
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      {/* Cabeçalho */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <p className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>
-          {modules.length} módulos • use as setas para reordenar (orderIndex)
+          {modules.length} módulos • use as setas para reordenar
         </p>
-        <button
-          onClick={() => setShowCreateModule((v) => !v)}
-          className="btn-3d text-sm font-bold"
-          style={{ padding: '10px 18px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
-        >
-          <Plus size={16} /> Novo Módulo
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setShowDeleted((v) => !v); if (!showDeleted) void loadDeletedLessons(); }}
+            className="btn-3d btn-secondary text-sm font-bold"
+            style={{ padding: '10px 18px' }}
+          >
+            <Trash2 size={16} /> Excluídas {deletedLessons.length > 0 && `(${deletedLessons.length})`}
+          </button>
+          <button
+            onClick={() => setShowCreateModule((v) => !v)}
+            className="btn-3d text-sm font-bold"
+            style={{ padding: '10px 18px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
+          >
+            <Plus size={16} /> Novo Módulo
+          </button>
+        </div>
       </div>
 
+      {/* Formulário de novo módulo */}
       {showCreateModule && (
         <Card>
           <form onSubmit={createModule} className="flex flex-col gap-3">
@@ -376,41 +461,165 @@ const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
         </Card>
       )}
 
+      {/* Módulos */}
       {modules.map((mod, idx) => (
-        <ModuleEditor
+        <ModuleCard
           key={mod.id}
           themeColor={themeColor}
           module={mod}
           lessons={lessonsByModule[mod.id] || []}
-          categories={categoriesByModule[mod.id] || []}
           onExpand={() => loadModuleDetail(mod.id)}
           onDelete={() => deleteModule(mod.id)}
           onMove={(dir) => moveModule(idx, dir)}
-          onLessonsChange={(lessons) => setLessonsByModule((prev) => ({ ...prev, [mod.id]: lessons }))}
-          onCategoriesChange={(cats) => setCategoriesByModule((prev) => ({ ...prev, [mod.id]: cats }))}
+          onEditLesson={openEditLesson}
+          onSoftDelete={handleSoftDelete}
+          onRestore={handleRestore}
         />
       ))}
+
+      {/* Aulas excluídas */}
+      {showDeleted && (
+        <Card title="Aulas Excluídas (Soft Delete)">
+          <div className="flex flex-col gap-2">
+            {deletedLessons.length === 0 && (
+              <p className="text-center py-6 italic" style={{ color: 'var(--text-muted)' }}>
+                Nenhuma aula excluída.
+              </p>
+            )}
+            {deletedLessons.map((lesson) => (
+              <div key={lesson.id} className="flex items-center gap-3 p-3 rounded-xl border border-[var(--border-color)] opacity-70">
+                {lesson.videoUrl && extractYouTubeId(lesson.videoUrl) && (
+                  <img
+                    src={`https://img.youtube.com/vi/${extractYouTubeId(lesson.videoUrl)}/mqdefault.jpg`}
+                    alt=""
+                    className="w-16 h-11 rounded object-cover shrink-0"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold truncate" style={{ color: 'var(--text-main)' }}>{lesson.title}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {lesson.module?.title} • excluída em {lesson.deletedAt ? new Date(lesson.deletedAt).toLocaleDateString('pt-BR') : '—'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleRestore(lesson.id, lesson.module?.id)}
+                  className="btn-3d text-xs font-bold flex items-center gap-1"
+                  style={{ padding: '6px 12px', '--btn-bg': 'var(--color-success)', '--btn-shadow': 'var(--color-success)' } as React.CSSProperties}
+                >
+                  <RotateCcw size={13} /> Restaurar
+                </button>
+                <button
+                  onClick={() => handleHardDelete(lesson.id)}
+                  className="btn-3d text-xs font-bold flex items-center gap-1"
+                  style={{ padding: '6px 12px', '--btn-bg': 'var(--color-danger)', '--btn-shadow': 'var(--color-danger)' } as React.CSSProperties}
+                >
+                  <Trash2 size={13} /> Excluir
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Modal de edição de aula */}
+      {editingLesson && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setEditingLesson(null)}>
+          <div className="glass p-6 rounded-[24px] border border-[var(--border-color)] max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-extrabold text-lg" style={{ color: 'var(--text-main)' }}>Editar Aula</h3>
+              <IconBtn onClick={() => setEditingLesson(null)}><X size={15} /></IconBtn>
+            </div>
+            <form onSubmit={handleEditLesson} className="flex flex-col gap-3">
+              <Input
+                placeholder="Título da aula"
+                value={editForm.title}
+                onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
+                required
+              />
+              <TextArea
+                placeholder="Descrição / conteúdo"
+                value={editForm.content}
+                onChange={(e) => setEditForm((f) => ({ ...f, content: e.target.value }))}
+              />
+              <Input
+                placeholder="URL do YouTube"
+                value={editForm.videoUrl}
+                onChange={(e) => setEditForm((f) => ({ ...f, videoUrl: e.target.value }))}
+              />
+              {editForm.videoUrl && extractYouTubeId(editForm.videoUrl) && (
+                <YouTubePlayer url={editForm.videoUrl} title="Preview" />
+              )}
+              <div className="flex gap-3 flex-wrap">
+                <div className="flex-1 min-w-[180px]">
+                  <label className="text-xs font-bold px-1 mb-1 block" style={{ color: 'var(--text-muted)' }}>MÓDULO</label>
+                  <Select
+                    value={editForm.moduleId}
+                    onChange={(e) => setEditForm((f) => ({ ...f, moduleId: e.target.value }))}
+                    required
+                  >
+                    <option value="">Selecione</option>
+                    {modules.map((m) => (
+                      <option key={m.id} value={m.id}>{m.title}</option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="w-24">
+                  <label className="text-xs font-bold px-1 mb-1 block" style={{ color: 'var(--text-muted)' }}>ORDEM</label>
+                  <Input
+                    type="number"
+                    value={editForm.orderIndex}
+                    onChange={(e) => setEditForm((f) => ({ ...f, orderIndex: e.target.value }))}
+                  />
+                </div>
+                <div className="flex items-end gap-2 pb-1">
+                  <input
+                    type="checkbox"
+                    checked={editForm.published}
+                    onChange={(e) => setEditForm((f) => ({ ...f, published: e.target.checked }))}
+                    className="h-5 w-5 rounded"
+                    style={{ accentColor: themeColor }}
+                  />
+                  <label className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>Publicado</label>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button type="submit" className="btn-3d text-sm font-bold flex-1" style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
+                  <Save size={16} /> Salvar Alterações
+                </button>
+                <button type="button" onClick={() => setEditingLesson(null)} className="btn-3d btn-secondary text-sm font-bold flex-1">
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-// Editor de um módulo (com aulas, categorias e anexos)
-const ModuleEditor: React.FC<{
+// ============================================================================
+// ModuleCard — Módulo expandível com aulas, CRUD e soft delete
+// ============================================================================
+
+const ModuleCard: React.FC<{
   themeColor: string;
   module: ModuleItem;
   lessons: LessonItem[];
-  categories: CategoryItem[];
   onExpand: () => void;
   onDelete: () => void;
   onMove: (dir: -1 | 1) => void;
-  onLessonsChange: (lessons: LessonItem[]) => void;
-  onCategoriesChange: (cats: CategoryItem[]) => void;
-}> = ({ themeColor, module, lessons, categories, onExpand, onDelete, onMove, onLessonsChange, onCategoriesChange }) => {
+  onEditLesson: (lesson: LessonItem) => void;
+  onSoftDelete: (lessonId: string, moduleId: string) => void;
+  onRestore: (lessonId: string, moduleId: string) => void;
+}> = ({ themeColor, module, lessons, onExpand, onDelete, onMove, onEditLesson, onSoftDelete, onRestore }) => {
   const [expanded, setExpanded] = useState(false);
   const [showLessonForm, setShowLessonForm] = useState(false);
-  const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [lessonForm, setLessonForm] = useState({ title: '', content: '', videoUrl: '' });
-  const [categoryForm, setCategoryForm] = useState({ title: '', description: '' });
+
+  // Separate active and deleted lessons
+  const activeLessons = lessons.filter((l) => !l.deletedAt);
+  const deletedLessonsInModule = lessons.filter((l) => l.deletedAt);
 
   const toggleExpand = () => {
     const next = !expanded;
@@ -421,7 +630,14 @@ const ModuleEditor: React.FC<{
   const createLesson = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/lessons', { moduleId: module.id, ...lessonForm, orderIndex: lessons.length });
+      await api.post('/lessons', {
+        moduleId: module.id,
+        title: lessonForm.title,
+        content: lessonForm.content || ' ',
+        videoUrl: lessonForm.videoUrl || null,
+        orderIndex: activeLessons.length,
+        published: true,
+      });
       setShowLessonForm(false);
       setLessonForm({ title: '', content: '', videoUrl: '' });
       onExpand();
@@ -431,61 +647,16 @@ const ModuleEditor: React.FC<{
     }
   };
 
-  const deleteLesson = async (lessonId: string) => {
-    if (!window.confirm('Excluir esta aula e seus anexos?')) return;
-    try {
-      await api.delete(`/lessons/${lessonId}`);
-      onExpand();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string } } };
-      alert(err.response?.data?.error || 'Erro ao excluir aula.');
-    }
-  };
-
-  const moveLesson = (list: LessonItem[], idx: number, dir: -1 | 1, onDone: (l: LessonItem[]) => void) => {
+  const moveLesson = (list: LessonItem[], idx: number, dir: -1 | 1) => {
     const next = [...list];
     const target = idx + dir;
     if (target < 0 || target >= next.length) return;
     [next[idx], next[target]] = [next[target]!, next[idx]!];
-    onDone(next);
     void api
       .put(`/lessons/reorder/${module.id}`, { order: next.map((l, i) => ({ id: l.id, orderIndex: i })) })
       .catch(() => alert('Erro ao reordenar aulas.'));
-  };
-
-  const createCategory = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await api.post('/categories', { moduleId: module.id, ...categoryForm, orderIndex: categories.length });
-      setShowCategoryForm(false);
-      setCategoryForm({ title: '', description: '' });
-      onExpand();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string } } };
-      alert(err.response?.data?.error || 'Erro ao criar categoria.');
-    }
-  };
-
-  const deleteCategory = async (categoryId: string) => {
-    if (!window.confirm('Excluir esta categoria?')) return;
-    try {
-      await api.delete(`/categories/${categoryId}`);
-      onExpand();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string } } };
-      alert(err.response?.data?.error || 'Erro ao excluir categoria.');
-    }
-  };
-
-  const moveCategory = (list: CategoryItem[], idx: number, dir: -1 | 1) => {
-    const next = [...list];
-    const target = idx + dir;
-    if (target < 0 || target >= next.length) return;
-    [next[idx], next[target]] = [next[target]!, next[idx]!];
-    onCategoriesChange(next);
-    void api
-      .put(`/categories/reorder/${module.id}`, { order: next.map((c, i) => ({ id: c.id, orderIndex: i })) })
-      .catch(() => alert('Erro ao reordenar categorias.'));
+    // Trigger re-render by calling onExpand after a brief delay
+    setTimeout(() => onExpand(), 100);
   };
 
   return (
@@ -493,10 +664,10 @@ const ModuleEditor: React.FC<{
       {/* Cabeçalho do módulo */}
       <div className="px-5 py-4 border-b border-[var(--border-color)] bg-[var(--bg-color)] flex items-center gap-3">
         <div className="flex flex-col gap-0.5">
-          <IconBtn onClick={() => onMove(-1)} title="Subir (orderIndex -1)">
+          <IconBtn onClick={() => onMove(-1)} title="Subir">
             <ArrowUp size={14} />
           </IconBtn>
-          <IconBtn onClick={() => onMove(1)} title="Descer (orderIndex +1)">
+          <IconBtn onClick={() => onMove(1)} title="Descer">
             <ArrowDown size={14} />
           </IconBtn>
         </div>
@@ -508,7 +679,7 @@ const ModuleEditor: React.FC<{
             <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{module.description}</p>
           )}
         </div>
-        <Badge color={themeColor}>order {module.orderIndex}</Badge>
+        <Badge color={themeColor}>{activeLessons.length} aula(s)</Badge>
         <IconBtn onClick={toggleExpand} title="Expandir">
           <Eye size={14} />
         </IconBtn>
@@ -518,465 +689,120 @@ const ModuleEditor: React.FC<{
       </div>
 
       {expanded && (
-        <div className="p-5 flex flex-col gap-6">
-          {/* Categorias */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-black uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Categorias</h4>
-              <button
-                onClick={() => setShowCategoryForm((v) => !v)}
-                className="text-xs font-bold flex items-center gap-1 cursor-pointer border-none bg-transparent"
-                style={{ color: themeColor }}
-              >
-                <Plus size={14} /> Nova categoria
-              </button>
-            </div>
-
-            {showCategoryForm && (
-              <form onSubmit={createCategory} className="flex flex-col gap-2 p-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-color)]">
-                <Input placeholder="Título da categoria" value={categoryForm.title} onChange={(e) => setCategoryForm((f) => ({ ...f, title: e.target.value }))} required />
-                <Input placeholder="Descrição (opcional)" value={categoryForm.description} onChange={(e) => setCategoryForm((f) => ({ ...f, description: e.target.value }))} />
-                <div className="flex gap-2">
-                  <button type="submit" className="btn-3d text-xs font-bold" style={{ padding: '8px 14px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
-                    Salvar
-                  </button>
-                  <button type="button" onClick={() => setShowCategoryForm(false)} className="btn-3d btn-secondary text-xs font-bold" style={{ padding: '8px 14px' }}>
-                    Cancelar
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {categories.map((cat, ci) => (
-              <div key={cat.id} className="flex items-center gap-2 p-2.5 rounded-xl border border-[var(--border-color)]">
-                <IconBtn onClick={() => moveCategory(categories, ci, -1)}><ArrowUp size={12} /></IconBtn>
-                <IconBtn onClick={() => moveCategory(categories, ci, 1)}><ArrowDown size={12} /></IconBtn>
-                <span className="flex-1 text-sm font-bold" style={{ color: 'var(--text-main)' }}>{cat.title}</span>
-                <IconBtn onClick={() => deleteCategory(cat.id)} danger><Trash2 size={13} /></IconBtn>
-              </div>
-            ))}
-            {categories.length === 0 && !showCategoryForm && (
-              <p className="text-xs italic" style={{ color: 'var(--text-muted)' }}>Nenhuma categoria neste módulo.</p>
-            )}
-          </div>
-
-          {/* Aulas */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-black uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Aulas ({lessons.length})</h4>
-              <button
-                onClick={() => setShowLessonForm((v) => !v)}
-                className="text-xs font-bold flex items-center gap-1 cursor-pointer border-none bg-transparent"
-                style={{ color: themeColor }}
-              >
-                <Plus size={14} /> Nova aula
-              </button>
-            </div>
-
-            {showLessonForm && (
-              <form onSubmit={createLesson} className="flex flex-col gap-2 p-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-color)]">
-                <Input placeholder="Título da aula" value={lessonForm.title} onChange={(e) => setLessonForm((f) => ({ ...f, title: e.target.value }))} required />
-                <TextArea placeholder="Conteúdo teórico / exercícios (texto)" value={lessonForm.content} onChange={(e) => setLessonForm((f) => ({ ...f, content: e.target.value }))} required />
-                <Input placeholder="URL do vídeo (YouTube/Vimeo) — opcional" value={lessonForm.videoUrl} onChange={(e) => setLessonForm((f) => ({ ...f, videoUrl: e.target.value }))} />
-                <div className="flex gap-2">
-                  <button type="submit" className="btn-3d text-xs font-bold" style={{ padding: '8px 14px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
-                    Salvar Aula
-                  </button>
-                  <button type="button" onClick={() => setShowLessonForm(false)} className="btn-3d btn-secondary text-xs font-bold" style={{ padding: '8px 14px' }}>
-                    Cancelar
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {lessons.map((lesson, li) => (
-              <div key={lesson.id} className="flex items-center gap-2 p-2.5 rounded-xl border border-[var(--border-color)]">
-                <IconBtn onClick={() => moveLesson(lessons, li, -1, onLessonsChange)}><ArrowUp size={12} /></IconBtn>
-                <IconBtn onClick={() => moveLesson(lessons, li, 1, onLessonsChange)}><ArrowDown size={12} /></IconBtn>
-                <FileText size={14} style={{ color: themeColor }} />
-                <span className="flex-1 text-sm font-bold truncate" style={{ color: 'var(--text-main)' }}>{lesson.title}</span>
-                <LessonAttachments lessonId={lesson.id} themeColor={themeColor} />
-                <IconBtn onClick={() => deleteLesson(lesson.id)} danger><Trash2 size={13} /></IconBtn>
-              </div>
-            ))}
-            {lessons.length === 0 && !showLessonForm && (
-              <p className="text-xs italic" style={{ color: 'var(--text-muted)' }}>Nenhuma aula neste módulo.</p>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Anexos de uma aula (upload + listagem + exclusão)
-const LessonAttachments: React.FC<{ lessonId: string; themeColor: string }> = ({ lessonId, themeColor }) => {
-  const [attachments, setAttachments] = useState<Array<{ id: string; type: string; url: string }>>([]);
-  const [open, setOpen] = useState(false);
-  const fileRef = React.useRef<HTMLInputElement>(null);
-
-  const load = async () => {
-    try {
-      const res = await api.get(`/attachments/lesson/${lessonId}`);
-      setAttachments(res.data);
-    } catch (error) {
-      console.error('Erro ao carregar anexos:', error);
-    }
-  };
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const formData = new FormData();
-    formData.append('file', file);
-    try {
-      await api.post(`/attachments/${lessonId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-      await load();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string } } };
-      alert(err.response?.data?.error || 'Erro ao enviar anexo (máx 20MB).');
-    } finally {
-      if (fileRef.current) fileRef.current.value = '';
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Excluir este anexo?')) return;
-    try {
-      await api.delete(`/attachments/${id}`);
-      await load();
-    } catch {
-      alert('Erro ao excluir anexo.');
-    }
-  };
-
-  return (
-    <>
-      <IconBtn onClick={() => { setOpen((v) => !v); if (!open) void load(); }} title="Anexos (PDF/áudio/imagem)">
-        <FileText size={13} />
-      </IconBtn>
-      {open && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
-          <div className="glass p-6 rounded-[24px] border border-[var(--border-color)] max-w-md w-full flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h4 className="font-extrabold text-base">Anexos da Aula</h4>
-              <IconBtn onClick={() => setOpen(false)}><X size={15} /></IconBtn>
-            </div>
-            <input ref={fileRef} type="file" accept="application/pdf,audio/*,image/*" onChange={handleUpload} className="hidden" />
-            <button onClick={() => fileRef.current?.click()} className="btn-3d text-sm font-bold" style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
-              <Upload size={16} /> Enviar Anexo (máx 20MB)
+        <div className="p-5 flex flex-col gap-4">
+          {/* Criar nova aula */}
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-black uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              Aulas ({activeLessons.length})
+            </h4>
+            <button
+              onClick={() => setShowLessonForm((v) => !v)}
+              className="text-xs font-bold flex items-center gap-1 cursor-pointer border-none bg-transparent"
+              style={{ color: themeColor }}
+            >
+              <Plus size={14} /> Nova aula
             </button>
-            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
-              {attachments.map((a) => (
-                <div key={a.id} className="flex items-center gap-3 p-2.5 rounded-xl border border-[var(--border-color)]">
-                  <FileText size={16} style={{ color: themeColor }} />
-                  <Badge>{a.type}</Badge>
-                  <a href={assetUrl(a.url)} target="_blank" rel="noopener noreferrer" className="text-xs font-bold flex-1 truncate" style={{ color: themeColor }}>
-                    {a.url.split('/').pop()}
-                  </a>
-                  <IconBtn onClick={() => handleDelete(a.id)} danger><Trash2 size={13} /></IconBtn>
-                </div>
-              ))}
-              {attachments.length === 0 && (
-                <p className="text-xs italic text-center" style={{ color: 'var(--text-muted)' }}>Nenhum anexo ainda.</p>
-              )}
-            </div>
           </div>
-        </div>
-      )}
-    </>
-  );
-};
 
-// ============================================================================
-// Videoaulas — CRUD por módulo
-// ============================================================================
-
-interface VideoLessonItem {
-  id: string;
-  title: string;
-  description: string | null;
-  content: string;
-  videoUrl: string | null;
-  published: boolean;
-  orderIndex: number;
-  module: { id: string; title: string };
-}
-
-const VideoLessonsTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
-  const [videoLessons, setVideoLessons] = useState<VideoLessonItem[]>([]);
-  const [modules, setModules] = useState<ModuleItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filterModule, setFilterModule] = useState<string>('all');
-
-  // Formulário
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    title: '',
-    description: '',
-    videoUrl: '',
-    moduleId: '',
-    orderIndex: '0',
-    published: true,
-  });
-
-  const loadModules = useCallback(async () => {
-    try {
-      const res = await api.get('/modules');
-      setModules(res.data);
-    } catch (error) {
-      console.error('Erro ao carregar módulos:', error);
-    }
-  }, []);
-
-  const loadVideoLessons = useCallback(async () => {
-    try {
-      setLoading(true);
-      // Buscar aulas de todos os módulos que tenham videoUrl
-      const modulesRes = await api.get('/modules');
-      const allLessons: VideoLessonItem[] = [];
-
-      for (const mod of modulesRes.data) {
-        const lessonsRes = await api.get(`/lessons/module/${mod.id}`);
-        for (const lesson of lessonsRes.data) {
-          allLessons.push({
-            ...lesson,
-            module: { id: mod.id, title: mod.title },
-          });
-        }
-      }
-
-      // Filtrar apenas aulas com videoUrl
-      setVideoLessons(allLessons.filter((l) => l.videoUrl));
-    } catch (error) {
-      console.error('Erro ao carregar videoaulas:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadModules();
-    loadVideoLessons();
-  }, [loadModules, loadVideoLessons]);
-
-  const filteredLessons = filterModule === 'all'
-    ? videoLessons
-    : videoLessons.filter((l) => l.module.id === filterModule);
-
-  const resetForm = () => {
-    setForm({ title: '', description: '', videoUrl: '', moduleId: '', orderIndex: '0', published: true });
-    setEditingId(null);
-    setShowForm(false);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.moduleId || !form.title || !form.videoUrl) {
-      alert('Título, módulo e URL do YouTube são obrigatórios.');
-      return;
-    }
-
-    try {
-      if (editingId) {
-        // Editar aula existente
-        await api.put(`/lessons/${editingId}`, {
-          title: form.title,
-          content: form.description || '',
-          videoUrl: form.videoUrl,
-          moduleId: form.moduleId,
-          orderIndex: parseInt(form.orderIndex, 10) || 0,
-          published: form.published,
-        });
-      } else {
-        // Criar nova aula
-        await api.post('/lessons', {
-          moduleId: form.moduleId,
-          title: form.title,
-          content: form.description || '',
-          videoUrl: form.videoUrl,
-          orderIndex: parseInt(form.orderIndex, 10) || 0,
-          published: form.published,
-        });
-      }
-      resetForm();
-      await loadVideoLessons();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string } } };
-      alert(err.response?.data?.error || 'Erro ao salvar videoaula.');
-    }
-  };
-
-  const handleEdit = (lesson: VideoLessonItem) => {
-    setForm({
-      title: lesson.title,
-      description: lesson.description || '',
-      videoUrl: lesson.videoUrl || '',
-      moduleId: lesson.module.id,
-      orderIndex: String(lesson.orderIndex),
-      published: lesson.published,
-    });
-    setEditingId(lesson.id);
-    setShowForm(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Excluir esta videoaula?')) return;
-    try {
-      await api.delete(`/lessons/${id}`);
-      await loadVideoLessons();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string } } };
-      alert(err.response?.data?.error || 'Erro ao excluir videoaula.');
-    }
-  };
-
-  if (loading) {
-    return <p className="text-center py-16" style={{ color: 'var(--text-muted)' }}>Carregando videoaulas...</p>;
-  }
-
-  return (
-    <div className="flex flex-col gap-6">
-      {/* Cabeçalho */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <p className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>
-            {filteredLessons.length} videoaula(s)
-          </p>
-          <Select value={filterModule} onChange={(e) => setFilterModule(e.target.value)} style={{ padding: '8px 12px', fontSize: '12px' }}>
-            <option value="all">Todos os módulos</option>
-            {modules.map((m) => (
-              <option key={m.id} value={m.id}>{m.title}</option>
-            ))}
-          </Select>
-        </div>
-        <button
-          onClick={() => { resetForm(); setShowForm((v) => !v); }}
-          className="btn-3d text-sm font-bold"
-          style={{ padding: '10px 18px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
-        >
-          <Plus size={16} /> Nova Videoaula
-        </button>
-      </div>
-
-      {/* Formulário */}
-      {showForm && (
-        <Card title={editingId ? 'Editar Videoaula' : 'Nova Videoaula'}>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <Input
-              placeholder="Título (ex: Saludos y Presentaciones)"
-              value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              required
-            />
-            <TextArea
-              placeholder="Descrição (opcional)"
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            />
-            <Input
-              placeholder="URL do YouTube (ex: https://www.youtube.com/watch?v=ABC123)"
-              value={form.videoUrl}
-              onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
-              required
-            />
-            {form.videoUrl && extractYouTubeId(form.videoUrl) && (
-              <YouTubePlayer
-                url={form.videoUrl}
-                title="Preview da Videoaula"
+          {showLessonForm && (
+            <form onSubmit={createLesson} className="flex flex-col gap-2 p-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-color)]">
+              <Input
+                placeholder="Título da aula"
+                value={lessonForm.title}
+                onChange={(e) => setLessonForm((f) => ({ ...f, title: e.target.value }))}
+                required
               />
-            )}
-            <div className="flex gap-3 flex-wrap">
-              <div className="flex-1 min-w-[200px]">
-                <label className="text-xs font-bold px-1 mb-1 block" style={{ color: 'var(--text-muted)' }}>MÓDULO</label>
-                <Select
-                  value={form.moduleId}
-                  onChange={(e) => setForm((f) => ({ ...f, moduleId: e.target.value }))}
-                  required
-                >
-                  <option value="">Selecione o módulo</option>
-                  {modules.map((m) => (
-                    <option key={m.id} value={m.id}>{m.title}</option>
-                  ))}
-                </Select>
+              <TextArea
+                placeholder="Descrição (opcional)"
+                value={lessonForm.content}
+                onChange={(e) => setLessonForm((f) => ({ ...f, content: e.target.value }))}
+              />
+              <Input
+                placeholder="URL do YouTube (ex: https://www.youtube.com/watch?v=ABC123)"
+                value={lessonForm.videoUrl}
+                onChange={(e) => setLessonForm((f) => ({ ...f, videoUrl: e.target.value }))}
+              />
+              {lessonForm.videoUrl && extractYouTubeId(lessonForm.videoUrl) && (
+                <YouTubePlayer url={lessonForm.videoUrl} title="Preview" />
+              )}
+              <div className="flex gap-2">
+                <button type="submit" className="btn-3d text-xs font-bold" style={{ padding: '8px 14px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
+                  Salvar Aula
+                </button>
+                <button type="button" onClick={() => setShowLessonForm(false)} className="btn-3d btn-secondary text-xs font-bold" style={{ padding: '8px 14px' }}>
+                  Cancelar
+                </button>
               </div>
-              <div className="w-24">
-                <label className="text-xs font-bold px-1 mb-1 block" style={{ color: 'var(--text-muted)' }}>ORDEM</label>
-                <Input
-                  type="number"
-                  value={form.orderIndex}
-                  onChange={(e) => setForm((f) => ({ ...f, orderIndex: e.target.value }))}
-                />
-              </div>
-              <div className="flex items-end gap-2 pb-1">
-                <input
-                  type="checkbox"
-                  checked={form.published}
-                  onChange={(e) => setForm((f) => ({ ...f, published: e.target.checked }))}
-                  className="h-5 w-5 rounded"
-                  style={{ accentColor: themeColor }}
-                />
-                <label className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>Publicado</label>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button type="submit" className="btn-3d text-sm font-bold flex-1" style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
-                <Save size={16} /> {editingId ? 'Atualizar' : 'Salvar Videoaula'}
-              </button>
-              <button type="button" onClick={resetForm} className="btn-3d btn-secondary text-sm font-bold flex-1">
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </Card>
-      )}
+            </form>
+          )}
 
-      {/* Lista de videoaulas */}
-      <div className="flex flex-col gap-3">
-        {filteredLessons.map((lesson) => {
-          const ytId = lesson.videoUrl ? extractYouTubeId(lesson.videoUrl) : null;
-          return (
-            <div key={lesson.id} className="glass rounded-[20px] border border-[var(--border-color)] overflow-hidden">
-              <div className="flex items-center gap-3 p-4">
-                {ytId && (
+          {/* Lista de aulas ativas */}
+          {activeLessons.map((lesson, li) => {
+            const ytId = lesson.videoUrl ? extractYouTubeId(lesson.videoUrl) : null;
+            return (
+              <div key={lesson.id} className="flex items-center gap-2 p-3 rounded-xl border border-[var(--border-color)]">
+                <div className="flex flex-col gap-0.5">
+                  <IconBtn onClick={() => moveLesson(activeLessons, li, -1)} title="Subir"><ArrowUp size={12} /></IconBtn>
+                  <IconBtn onClick={() => moveLesson(activeLessons, li, 1)} title="Descer"><ArrowDown size={12} /></IconBtn>
+                </div>
+                {ytId ? (
                   <img
                     src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`}
-                    alt={lesson.title}
-                    className="w-24 h-16 rounded-lg object-cover shrink-0"
+                    alt=""
+                    className="w-16 h-11 rounded object-cover shrink-0"
                   />
+                ) : (
+                  <FileText size={16} style={{ color: themeColor }} className="shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-extrabold truncate" style={{ color: 'var(--text-main)' }}>{lesson.title}</p>
-                  <p className="text-xs font-bold" style={{ color: themeColor }}>{lesson.module.title}</p>
-                  {lesson.description && (
-                    <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{lesson.description}</p>
-                  )}
+                  <p className="text-sm font-bold truncate" style={{ color: 'var(--text-main)' }}>{lesson.title}</p>
+                  <div className="flex items-center gap-2">
+                    <Badge color={lesson.published ? 'var(--color-success)' : 'var(--text-muted)'}>
+                      {lesson.published ? 'Publicado' : 'Rascunho'}
+                    </Badge>
+                    {lesson.videoUrl && (
+                      <a href={lesson.videoUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold flex items-center gap-0.5" style={{ color: themeColor }}>
+                        <ExternalLink size={10} /> YouTube
+                      </a>
+                    )}
+                  </div>
                 </div>
-                <Badge color={lesson.published ? 'var(--color-success)' : 'var(--text-muted)'}>
-                  {lesson.published ? 'Publicado' : 'Rascunho'}
-                </Badge>
-                {lesson.videoUrl && (
-                  <a href={lesson.videoUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-bold flex items-center gap-1" style={{ color: themeColor }}>
-                    <ExternalLink size={14} />
-                  </a>
-                )}
-                <IconBtn onClick={() => handleEdit(lesson)} title="Editar">
+                <IconBtn onClick={() => onEditLesson(lesson)} title="Editar">
                   <FileText size={14} />
                 </IconBtn>
-                <IconBtn onClick={() => handleDelete(lesson.id)} title="Excluir" danger>
+                <IconBtn onClick={() => onSoftDelete(lesson.id, module.id)} title="Excluir (recuperável)" danger>
                   <Trash2 size={14} />
                 </IconBtn>
               </div>
+            );
+          })}
+
+          {activeLessons.length === 0 && !showLessonForm && (
+            <p className="text-xs italic" style={{ color: 'var(--text-muted)' }}>Nenhuma aula neste módulo.</p>
+          )}
+
+          {/* Aulas excluídas neste módulo */}
+          {deletedLessonsInModule.length > 0 && (
+            <div className="flex flex-col gap-2 mt-2 pt-3 border-t border-[var(--border-color)]">
+              <h4 className="text-xs font-black uppercase tracking-wider" style={{ color: 'var(--color-danger)' }}>
+                Excluídas ({deletedLessonsInModule.length})
+              </h4>
+              {deletedLessonsInModule.map((lesson) => (
+                <div key={lesson.id} className="flex items-center gap-2 p-2.5 rounded-xl border border-[var(--border-color)] opacity-60">
+                  <span className="flex-1 text-sm font-bold truncate line-through" style={{ color: 'var(--text-muted)' }}>{lesson.title}</span>
+                  <button
+                    onClick={() => onRestore(lesson.id, module.id)}
+                    className="text-[10px] font-bold flex items-center gap-1 cursor-pointer border-none rounded-lg px-2 py-1"
+                    style={{ color: 'var(--color-success)', background: 'transparent' }}
+                  >
+                    <RotateCcw size={11} /> Restaurar
+                  </button>
+                </div>
+              ))}
             </div>
-          );
-        })}
-        {filteredLessons.length === 0 && (
-          <p className="text-center py-12 italic" style={{ color: 'var(--text-muted)' }}>
-            Nenhuma videoaula encontrada. Cadastre a primeira!
-          </p>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

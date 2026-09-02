@@ -165,6 +165,20 @@ const GRAMATICA_VIDEOS: VideoData[] = [
 ];
 
 // ============================================================================
+// LEITURA E COMPREENSÃO DE TEXTO — 2 vídeos
+// Playlist: https://www.youtube.com/playlist?list=PLAfFPAnvIQeM
+//
+// Ordem pedagógica:
+//  1. Texto com áudio — prática de leitura com apoio auditivo
+//  2. Dicas de interpretação — estratégias para entender textos
+// ============================================================================
+
+const LEITURA_COMPREENSACAO_VIDEOS: VideoData[] = [
+  { orderIndex: 1, videoId: 'a1bJZqU-UD8', title: 'Texto em Espanhol com Áudio — Aumente seu Vocabulário', url: 'https://www.youtube.com/watch?v=a1bJZqU-UD8', description: 'Aula com texto em espanhol acompanhado de áudio para praticar leitura, compreensão e ampliar vocabulário.' },
+  { orderIndex: 2, videoId: 'fGebBFz7mxw', title: '5 Dicas de Interpretação de Texto de Espanhol para o ENEM', url: 'https://www.youtube.com/watch?v=fGebBFz7mxw', description: 'Cinco dicas práticas de interpretação de texto em espanhol, úteis para provas e leitura cotidiana.' },
+];
+
+// ============================================================================
 // DADOS CENTRALIZADOS — adicione novos módulos aqui
 // ============================================================================
 
@@ -174,6 +188,7 @@ const ALL_MODULES: ModuleSeedData[] = [
   { moduleTitle: 'Dicas de Aprendizagem', videos: DICAS_APRENDIZAGEM_VIDEOS },
   { moduleTitle: 'Expressões e Girias do Cotidiano', videos: EXPRESSOES_GIRIAS_VIDEOS },
   { moduleTitle: 'Gramática', videos: GRAMATICA_VIDEOS },
+  { moduleTitle: 'Leitura e Compreensão de texto', videos: LEITURA_COMPREENSACAO_VIDEOS },
 ];
 
 // ============================================================================

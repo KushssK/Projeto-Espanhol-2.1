@@ -6,6 +6,7 @@ import fs from 'fs';
 import { createServer } from 'http';
 import { setupSocket } from './socket';
 import { seedEmailWhitelist } from './lib/email-whitelist-seed';
+import { seedConversacaoLessons } from './lib/seed-conversacao';
 
 // Rotas
 import authRoutes from './routes/auth.routes';
@@ -111,5 +112,12 @@ server.listen(port, async () => {
     await seedEmailWhitelist();
   } catch (err) {
     console.error('⚠️ Erro ao inicializar whitelist de e-mails (não bloqueante):', err);
+  }
+
+  // Seed das videoaulas do módulo Conversação (idempotente — seguro em cada restart)
+  try {
+    await seedConversacaoLessons();
+  } catch (err) {
+    console.error('⚠️ Erro ao semear videoaulas de Conversação (não bloqueante):', err);
   }
 });

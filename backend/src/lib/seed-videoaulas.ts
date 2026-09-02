@@ -307,33 +307,13 @@ async function seedModuleLessons(moduleTitle: string, videos: VideoData[]): Prom
     created++;
   }
 
-  // Reordenar aulas existentes se o orderIndex estiver diferente do ideal
-  let reordered = 0;
-  for (const video of videos) {
-    const found = existingLessons.find(l => l.videoUrl === video.url);
-    if (found) {
-      const full = await prisma.lesson.findFirst({
-        where: { videoUrl: video.url },
-        select: { id: true, orderIndex: true },
-      });
-      if (full && full.orderIndex !== video.orderIndex) {
-        await prisma.lesson.update({
-          where: { id: full.id },
-          data: { orderIndex: video.orderIndex },
-        });
-        reordered++;
-      }
-    }
-  }
-
-  if (created > 0 || reordered > 0) {
+  if (created > 0 || skipped > 0) {
     const parts: string[] = [];
     if (created > 0) parts.push(`${created} criada(s)`);
     if (skipped > 0) parts.push(`${skipped} já existente(s)`);
-    if (reordered > 0) parts.push(`${reordered} reordenada(s)`);
     console.log(`🎬 [SEED] ${moduleTitle}: ${parts.join(', ')}.`);
   } else {
-    console.log(`🎬 [SEED] ${moduleTitle}: todas as ${videos.length} videoaulas já existem e estão ordenadas.`);
+    console.log(`🎬 [SEED] ${moduleTitle}: todas as ${videos.length} videoaulas já existem.`);
   }
 }
 

@@ -3,6 +3,41 @@ import { prisma } from '../lib/prisma';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
 // ============================================================================
+// Helpers — Normalização de URL do YouTube
+// ============================================================================
+
+/**
+ * Extrai o VIDEO_ID de diversas formatações de URL do YouTube.
+ * Retorna null se a URL não for válida.
+ */
+function extractYouTubeVideoId(url: string): string | null {
+  if (!url || typeof url !== 'string') return null;
+  const patterns = [
+    /(?:youtube\.com\/watch\?.*v=|youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+    /^([a-zA-Z0-9_-]{11})$/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) return match[1];
+  }
+  return null;
+}
+
+/**
+ * Normaliza uma URL do YouTube para o formato padronizado watch?v=ID.
+ * Retorna a URL original se não for YouTube.
+ */
+function normalizeYouTubeUrl(url: string): string {
+  const videoId = extractYouTubeVideoId(url);
+  if (!videoId) return url;
+  return `https://www.youtube.com/watch?v=${videoId}`;
+}
+
+// ============================================================================
 // GET /api/lessons/module/:moduleId — Listar aulas de um módulo
 // Admin/Teacher com ?includeDeleted=true veem aulas excluídas também
 // ============================================================================
@@ -108,11 +143,14 @@ export const createLesson = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Módulo não encontrado.' });
     }
 
-    // Verificar duplicata por videoUrl (ignorar aulas soft-deletadas)
-    if (videoUrl) {
+    // Normalizar URL do YouTube (watch?v=ID, youtu.be/ID, shorts/ID → watch?v=ID)
+    const normalizedUrl = videoUrl ? normalizeYouTubeUrl(videoUrl) : null;
+
+    // Verificar duplicata por videoUrl normalizada (ignorar aulas soft-deletadas)
+    if (normalizedUrl) {
       const existing = await prisma.lesson.findFirst({
         where: {
-          videoUrl,
+          videoUrl: normalizedUrl,
           deletedAt: null,
         },
       });
@@ -127,7 +165,7 @@ export const createLesson = async (req: AuthRequest, res: Response) => {
         categoryId: categoryId || null,
         title,
         content,
-        videoUrl: videoUrl || null,
+        videoUrl: normalizedUrl,
         orderIndex: orderIndex ?? 0,
         published: published ?? false,
       },
@@ -165,11 +203,12 @@ export const updateLesson = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Verificar duplicata por videoUrl (se mudou)
-    if (videoUrl && videoUrl !== existing.videoUrl) {
+    // Normalizar e verificar duplicata por videoUrl (se mudou)
+    const normalizedUrl = videoUrl ? normalizeYouTubeUrl(videoUrl) : videoUrl;
+    if (normalizedUrl && normalizedUrl !== existing.videoUrl) {
       const duplicate = await prisma.lesson.findFirst({
         where: {
-          videoUrl,
+          videoUrl: normalizedUrl,
           id: { not: id },
           deletedAt: null,
         },
@@ -184,7 +223,7 @@ export const updateLesson = async (req: AuthRequest, res: Response) => {
       data: {
         ...(title !== undefined && { title }),
         ...(content !== undefined && { content }),
-        ...(videoUrl !== undefined && { videoUrl }),
+        ...(normalizedUrl !== undefined && { videoUrl: normalizedUrl }),
         ...(published !== undefined && { published }),
         ...(orderIndex !== undefined && { orderIndex }),
         ...(moduleId !== undefined && { moduleId }),

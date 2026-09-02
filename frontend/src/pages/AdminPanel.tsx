@@ -259,6 +259,8 @@ const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
   // Modal de edição de aula
   const [editingLesson, setEditingLesson] = useState<LessonItem | null>(null);
   const [editForm, setEditForm] = useState({ title: '', content: '', videoUrl: '', moduleId: '', orderIndex: '0', published: true });
+  const [saving, setSaving] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null); // tracks lesson ID being acted on
 
   const loadModules = useCallback(async () => {
     try {
@@ -350,7 +352,8 @@ const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
 
   const handleEditLesson = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingLesson) return;
+    if (!editingLesson || saving) return;
+    setSaving(true);
     try {
       await api.put(`/lessons/${editingLesson.id}`, {
         title: editForm.title,
@@ -361,28 +364,33 @@ const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
         published: editForm.published,
       });
       setEditingLesson(null);
-      // Reload the module that contains this lesson
       if (editForm.moduleId) await loadModuleDetail(editForm.moduleId);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
       alert(err.response?.data?.error || 'Erro ao atualizar aula.');
+    } finally {
+      setSaving(false);
     }
   };
 
   // Soft delete
   const handleSoftDelete = async (lessonId: string, moduleId: string) => {
     if (!window.confirm('Excluir esta aula? Ela será ocultada dos alunos mas pode ser restaurada depois.')) return;
+    setActionLoading(lessonId);
     try {
       await api.delete(`/lessons/${lessonId}`);
       await loadModuleDetail(moduleId);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
       alert(err.response?.data?.error || 'Erro ao excluir aula.');
+    } finally {
+      setActionLoading(null);
     }
   };
 
   // Restaurar
   const handleRestore = async (lessonId: string, moduleId?: string) => {
+    setActionLoading(lessonId);
     try {
       await api.put(`/lessons/${lessonId}/restore`);
       if (moduleId) await loadModuleDetail(moduleId);
@@ -390,18 +398,23 @@ const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
       alert(err.response?.data?.error || 'Erro ao restaurar aula.');
+    } finally {
+      setActionLoading(null);
     }
   };
 
   // Exclusão definitiva
   const handleHardDelete = async (lessonId: string) => {
     if (!window.confirm('⚠️ EXCLUSÃO DEFINITIVA: Esta aula será apagada para sempre. Tem certeza?')) return;
+    setActionLoading(lessonId);
     try {
       await api.delete(`/lessons/${lessonId}/hard`);
       await loadDeletedLessons();
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
       alert(err.response?.data?.error || 'Erro ao excluir aula definitivamente.');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -474,6 +487,7 @@ const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
           onEditLesson={openEditLesson}
           onSoftDelete={handleSoftDelete}
           onRestore={handleRestore}
+          actionLoading={actionLoading}
         />
       ))}
 
@@ -503,17 +517,19 @@ const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
                 </div>
                 <button
                   onClick={() => handleRestore(lesson.id, lesson.module?.id)}
+                  disabled={actionLoading === lesson.id}
                   className="btn-3d text-xs font-bold flex items-center gap-1"
                   style={{ padding: '6px 12px', '--btn-bg': 'var(--color-success)', '--btn-shadow': 'var(--color-success)' } as React.CSSProperties}
                 >
-                  <RotateCcw size={13} /> Restaurar
+                  {actionLoading === lesson.id ? '...' : <><RotateCcw size={13} /> Restaurar</>}
                 </button>
                 <button
                   onClick={() => handleHardDelete(lesson.id)}
+                  disabled={actionLoading === lesson.id}
                   className="btn-3d text-xs font-bold flex items-center gap-1"
                   style={{ padding: '6px 12px', '--btn-bg': 'var(--color-danger)', '--btn-shadow': 'var(--color-danger)' } as React.CSSProperties}
                 >
-                  <Trash2 size={13} /> Excluir
+                  {actionLoading === lesson.id ? '...' : <><Trash2 size={13} /> Excluir</>}
                 </button>
               </div>
             ))}
@@ -523,11 +539,11 @@ const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
 
       {/* Modal de edição de aula */}
       {editingLesson && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setEditingLesson(null)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !saving && setEditingLesson(null)}>
           <div className="glass p-6 rounded-[24px] border border-[var(--border-color)] max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-extrabold text-lg" style={{ color: 'var(--text-main)' }}>Editar Aula</h3>
-              <IconBtn onClick={() => setEditingLesson(null)}><X size={15} /></IconBtn>
+              <IconBtn onClick={() => !saving && setEditingLesson(null)}><X size={15} /></IconBtn>
             </div>
             <form onSubmit={handleEditLesson} className="flex flex-col gap-3">
               <Input
@@ -583,12 +599,12 @@ const ContentTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
                 </div>
               </div>
               <div className="flex gap-3">
-                <button type="submit" className="btn-3d text-sm font-bold flex-1" style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
-                  <Save size={16} /> Salvar Alterações
-                </button>
-                <button type="button" onClick={() => setEditingLesson(null)} className="btn-3d btn-secondary text-sm font-bold flex-1">
-                  Cancelar
-                </button>
+              <button type="submit" disabled={saving} className="btn-3d text-sm font-bold flex-1" style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
+                {saving ? 'Salvando...' : <><Save size={16} /> Salvar Alterações</>}
+              </button>
+              <button type="button" onClick={() => !saving && setEditingLesson(null)} className="btn-3d btn-secondary text-sm font-bold flex-1" disabled={saving}>
+                Cancelar
+              </button>
               </div>
             </form>
           </div>
@@ -612,7 +628,8 @@ const ModuleCard: React.FC<{
   onEditLesson: (lesson: LessonItem) => void;
   onSoftDelete: (lessonId: string, moduleId: string) => void;
   onRestore: (lessonId: string, moduleId: string) => void;
-}> = ({ themeColor, module, lessons, onExpand, onDelete, onMove, onEditLesson, onSoftDelete, onRestore }) => {
+  actionLoading: string | null;
+}> = ({ themeColor, module, lessons, onExpand, onDelete, onMove, onEditLesson, onSoftDelete, onRestore, actionLoading }) => {
   const [expanded, setExpanded] = useState(false);
   const [showLessonForm, setShowLessonForm] = useState(false);
   const [lessonForm, setLessonForm] = useState({ title: '', content: '', videoUrl: '' });
@@ -647,16 +664,17 @@ const ModuleCard: React.FC<{
     }
   };
 
-  const moveLesson = (list: LessonItem[], idx: number, dir: -1 | 1) => {
+  const moveLesson = async (list: LessonItem[], idx: number, dir: -1 | 1) => {
     const next = [...list];
     const target = idx + dir;
     if (target < 0 || target >= next.length) return;
     [next[idx], next[target]] = [next[target]!, next[idx]!];
-    void api
-      .put(`/lessons/reorder/${module.id}`, { order: next.map((l, i) => ({ id: l.id, orderIndex: i })) })
-      .catch(() => alert('Erro ao reordenar aulas.'));
-    // Trigger re-render by calling onExpand after a brief delay
-    setTimeout(() => onExpand(), 100);
+    try {
+      await api.put(`/lessons/reorder/${module.id}`, { order: next.map((l, i) => ({ id: l.id, orderIndex: i })) });
+      await onExpand();
+    } catch {
+      alert('Erro ao reordenar aulas.');
+    }
   };
 
   return (
@@ -770,8 +788,12 @@ const ModuleCard: React.FC<{
                 <IconBtn onClick={() => onEditLesson(lesson)} title="Editar">
                   <FileText size={14} />
                 </IconBtn>
-                <IconBtn onClick={() => onSoftDelete(lesson.id, module.id)} title="Excluir (recuperável)" danger>
-                  <Trash2 size={14} />
+                <IconBtn
+                  onClick={() => onSoftDelete(lesson.id, module.id)}
+                  title="Excluir (recuperável)"
+                  danger
+                >
+                  {actionLoading === lesson.id ? '...' : <Trash2 size={14} />}
                 </IconBtn>
               </div>
             );
@@ -792,10 +814,11 @@ const ModuleCard: React.FC<{
                   <span className="flex-1 text-sm font-bold truncate line-through" style={{ color: 'var(--text-muted)' }}>{lesson.title}</span>
                   <button
                     onClick={() => onRestore(lesson.id, module.id)}
+                    disabled={actionLoading === lesson.id}
                     className="text-[10px] font-bold flex items-center gap-1 cursor-pointer border-none rounded-lg px-2 py-1"
                     style={{ color: 'var(--color-success)', background: 'transparent' }}
                   >
-                    <RotateCcw size={11} /> Restaurar
+                    {actionLoading === lesson.id ? 'Restaurando...' : <><RotateCcw size={11} /> Restaurar</>}
                   </button>
                 </div>
               ))}

@@ -87,12 +87,29 @@ const CULTURA_HISPANICA_VIDEOS: VideoData[] = [
 ];
 
 // ============================================================================
+// DICAS DE APRENDIZAGEM — 3 vídeos
+// Playlist: https://www.youtube.com/playlist?list=PLUj1ZfaWpkio
+//
+// Ordem pedagógica (já adequada na playlist original):
+//  1. 50 Palavras-chave — vocabulário fundamental para conversação
+//  2. Técnicas de memorização — como reter o que foi aprendido
+//  3. Aplicativos de estudo — ferramentas para praticar
+// ============================================================================
+
+const DICAS_APRENDIZAGEM_VIDEOS: VideoData[] = [
+  { orderIndex: 1, videoId: 'N5gL6kVv8ck', title: '50 Palavras-chave e Expressões Úteis para Conversar em Espanhol', url: 'https://www.youtube.com/watch?v=N5gL6kVv8ck', description: 'As 50 palavras-chave e expressões mais úteis para iniciar uma conversa em espanhol. Vocabulário essencial para o dia a dia.' },
+  { orderIndex: 2, videoId: '2fDuDyB3WKI', title: '4 Técnicas para Memorizar Palavras em Espanhol', url: 'https://www.youtube.com/watch?v=2fDuDyB3WKI', description: 'Quatro técnicas comprovadas para memorizar vocabulário em espanhol de forma eficaz e duradoura.' },
+  { orderIndex: 3, videoId: 'l5cVlwebFng', title: 'Aplicativos de Estudo Para Aprender Espanhol', url: 'https://www.youtube.com/watch?v=l5cVlwebFng', description: 'Dica dos melhores aplicativos gratuitos e pagos para praticar e aprender espanhol no dia a dia.' },
+];
+
+// ============================================================================
 // DADOS CENTRALIZADOS — adicione novos módulos aqui
 // ============================================================================
 
 const ALL_MODULES: ModuleSeedData[] = [
   { moduleTitle: 'Conversação', videos: CONVERSACAO_VIDEOS },
   { moduleTitle: 'Cultura Hispânica', videos: CULTURA_HISPANICA_VIDEOS },
+  { moduleTitle: 'Dicas de Aprendizagem', videos: DICAS_APRENDIZAGEM_VIDEOS },
 ];
 
 // ============================================================================

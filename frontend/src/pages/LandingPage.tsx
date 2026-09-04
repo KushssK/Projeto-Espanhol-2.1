@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useThemeStore } from '../stores/useThemeStore';
 import { useAuthStore } from '../stores/useAuthStore';
+import { Mascot } from '../components/Mascot';
 import {
   BookOpen,
   PlayCircle,
@@ -126,19 +127,22 @@ const Hero: React.FC = () => {
 
             {/* Mini dashboard preview */}
             <div className="relative z-10 flex flex-col gap-5">
-              <div className="flex items-center gap-3">
-                <div
-                  className="h-12 w-12 rounded-2xl flex items-center justify-center text-white font-black text-lg"
-                  style={{ backgroundColor: themeColor }}
-                >
-                  E
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="h-12 w-12 rounded-2xl flex items-center justify-center text-white font-black text-lg"
+                    style={{ backgroundColor: themeColor }}
+                  >
+                    E
+                  </div>
+                  <div>
+                    <p className="text-sm font-extrabold">Espanhol em Rede</p>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      Sua jornada de aprendizado
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-extrabold">Espanhol em Rede</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    Sua jornada de aprendizado
-                  </p>
-                </div>
+                <Mascot size={56} title="Mascote do Espanhol em Rede" />
               </div>
 
               <div className="grid grid-cols-3 gap-3">

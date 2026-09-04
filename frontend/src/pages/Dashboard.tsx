@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useThemeStore } from '../stores/useThemeStore';
+import { Mascot } from '../components/Mascot';
 import { BookOpen, Star, HelpCircle, ChevronDown, PlayCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 
 interface Lesson {
@@ -128,6 +129,9 @@ export const Dashboard: React.FC = () => {
               Pronto para praticar espanhol hoje? Escolha um módulo para
               começar!
             </p>
+          </div>
+          <div className="flex items-center justify-center shrink-0">
+            <Mascot size={104} title="Mascote do Espanhol em Rede" />
           </div>
           <div className="flex items-center gap-4 bg-[var(--bg-color)] px-5 py-3 rounded-2xl border border-[var(--border-color)]">
             <div className="text-center">

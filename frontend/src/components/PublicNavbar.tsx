@@ -40,7 +40,7 @@ export const PublicNavbar: React.FC = () => {
   return (
     <nav className="glass sticky top-0 z-50 px-6 py-4 flex items-center justify-between border-b border-[var(--border-color)]">
       {/* Logo */}
-      <Link to="/" className="flex items-center gap-3" style={{ textDecoration: 'none' }}>
+      <Link to={user ? "/dashboard" : "/"} className="flex items-center gap-3" style={{ textDecoration: 'none' }}>
         <div
           className="h-10 w-10 rounded-full flex items-center justify-center text-white font-black text-xl"
           style={{ backgroundColor: themeColor }}
@@ -78,11 +78,11 @@ export const PublicNavbar: React.FC = () => {
 
         {user ? (
           <Link
-            to="/"
+            to="/dashboard"
             className="btn-3d text-sm font-bold"
             style={{ padding: '8px 16px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
           >
-            Dashboard
+            Ir para o Dashboard
           </Link>
         ) : (
           <>
@@ -139,11 +139,11 @@ export const PublicNavbar: React.FC = () => {
           <hr className="border-[var(--border-color)]" />
           {user ? (
             <Link
-              to="/"
+              to="/dashboard"
               onClick={() => setMobileOpen(false)}
               className="btn-3d text-center py-2"
             >
-              Dashboard
+              Ir para o Dashboard
             </Link>
           ) : (
             <>

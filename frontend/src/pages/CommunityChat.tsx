@@ -3,7 +3,7 @@ import { api, assetUrl } from '../services/api';
 import { connectSocket, getSocket } from '../services/socket';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useThemeStore } from '../stores/useThemeStore';
-import { Send, Image, Plus, User as UserIcon, MessageSquare, Globe, Lock, Search, X } from 'lucide-react';
+import { Send, Image, Plus, User as UserIcon, MessageSquare, Globe, Lock, Search, X, Users } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -42,6 +42,8 @@ interface SearchUser {
   username: string | null;
   email: string;
   avatarUrl: string | null;
+  role?: string;
+  createdAt?: string;
 }
 
 export const CommunityChat: React.FC = () => {
@@ -55,6 +57,12 @@ export const CommunityChat: React.FC = () => {
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loadingRooms, setLoadingRooms] = useState(true);
+
+  // Abas da barra lateral: Conversas vs Membros da Comunidade
+  const [sidebarTab, setSidebarTab] = useState<'chats' | 'members'>('chats');
+  const [communityMembers, setCommunityMembers] = useState<SearchUser[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [memberSearchTerm, setMemberSearchTerm] = useState('');
 
   // Modal de criação
   const [roomMode, setRoomMode] = useState<'private' | 'group'>('private');
@@ -178,23 +186,89 @@ export const CommunityChat: React.FC = () => {
     }
   }, [activeRoom, rooms, loadingRooms]);
 
-  // Buscar usuários para conversa 1:1 ou grupo
-  const handleSearchUsers = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchTerm.trim().length < 2) return;
+  // Carregar todos os membros da comunidade
+  const loadCommunityMembers = useCallback(async (q = '') => {
+    setLoadingMembers(true);
     try {
-      const res = await api.get(`/users/search?q=${encodeURIComponent(searchTerm.trim())}`);
-      // Excluir usuário atual e já selecionados
+      const url = q.trim().length >= 2
+        ? `/users/search?q=${encodeURIComponent(q.trim())}`
+        : '/users/search';
+      const res = await api.get(url);
+      const filtered = res.data.filter((u: SearchUser) => u.id !== currentUser?.id);
+      setCommunityMembers(filtered);
+      return filtered;
+    } catch (err) {
+      console.error('Erro ao buscar membros da comunidade:', err);
+      return [];
+    } finally {
+      setLoadingMembers(false);
+    }
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    loadCommunityMembers();
+  }, [loadCommunityMembers]);
+
+  // Ao abrir o modal de nova conversa, pré-carregar os membros
+  useEffect(() => {
+    if (showCreateModal) {
+      if (communityMembers.length === 0) {
+        loadCommunityMembers().then((users) => {
+          if (users) {
+            setSearchResults(users.filter((u: SearchUser) => u.id !== selectedTarget?.id && !groupMembers.some((m) => m.id === u.id)));
+          }
+        });
+      } else {
+        setSearchResults(communityMembers.filter((u: SearchUser) => u.id !== selectedTarget?.id && !groupMembers.some((m) => m.id === u.id)));
+      }
+    }
+  }, [showCreateModal, communityMembers, selectedTarget, groupMembers, loadCommunityMembers]);
+
+  // Iniciar conversa direta 1:1 imediatamente (pelo sidebar ou modal)
+  const handleStartDirectChat = async (targetUser: SearchUser) => {
+    // Verificar se já existe conversa privada com o usuário
+    const existing = rooms.find(
+      (r) => r.type === 'PRIVATE' && r.members.some((m) => m.userId === targetUser.id)
+    );
+    if (existing) {
+      selectRoom(existing);
+      setSidebarTab('chats');
+      return;
+    }
+
+    try {
+      const res = await api.post('/chat/rooms/private', { targetUserId: targetUser.id });
+      const room: ChatRoom = res.data;
+      setRooms((prev) => [room, ...prev.filter((r) => r.id !== room.id)]);
+      selectRoom(room);
+      setSidebarTab('chats');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Erro ao iniciar conversa.');
+    }
+  };
+
+  // Filtragem e busca em tempo real no modal
+  const handleModalSearchChange = (val: string) => {
+    setSearchTerm(val);
+    if (!val.trim()) {
       setSearchResults(
-        res.data.filter(
-          (u: SearchUser) =>
-            u.id !== currentUser?.id &&
+        communityMembers.filter(
+          (u) =>
             u.id !== selectedTarget?.id &&
             !groupMembers.some((m) => m.id === u.id)
         )
       );
-    } catch (err) {
-      console.error('Erro ao buscar usuários:', err);
+    } else {
+      const lower = val.toLowerCase();
+      setSearchResults(
+        communityMembers.filter(
+          (u) =>
+            u.id !== selectedTarget?.id &&
+            !groupMembers.some((m) => m.id === u.id) &&
+            ((u.username && u.username.toLowerCase().includes(lower)) ||
+             (u.email && u.email.toLowerCase().includes(lower)))
+        )
+      );
     }
   };
 
@@ -230,7 +304,7 @@ export const CommunityChat: React.FC = () => {
     setRoomMode('private');
     setNewRoomName('');
     setSearchTerm('');
-    setSearchResults([]);
+    setSearchResults(communityMembers);
     setSelectedTarget(null);
     setGroupMembers([]);
   };
@@ -291,61 +365,200 @@ export const CommunityChat: React.FC = () => {
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 py-8 h-[calc(100vh-100px)] flex flex-col md:flex-row gap-6">
-      {/* Sidebar de Conversas */}
+      {/* Sidebar de Conversas & Membros */}
       <div className="w-full md:w-80 glass border-2 border-[var(--border-color)] rounded-[24px] flex flex-col overflow-hidden">
-        <div className="px-5 py-4 border-b border-[var(--border-color)] bg-[var(--bg-color)] flex items-center justify-between">
-          <h3 className="text-base font-extrabold flex items-center gap-2">
-            <MessageSquare style={{ color: themeColor }} /> Conversas
-          </h3>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="h-8 w-8 rounded-xl bg-[var(--primary-light)] flex items-center justify-center cursor-pointer border-none hover:opacity-85"
-            style={{ color: themeColor }}
-          >
-            <Plus size={18} />
-          </button>
+        {/* Header do Sidebar com Tabs */}
+        <div className="p-3 border-b border-[var(--border-color)] bg-[var(--bg-color)] flex flex-col gap-2.5">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-base font-extrabold flex items-center gap-2" style={{ color: 'var(--text-main)' }}>
+              <MessageSquare size={18} style={{ color: themeColor }} /> Comunidade
+            </h3>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="h-8 w-8 rounded-xl bg-[var(--primary-light)] flex items-center justify-center cursor-pointer border-none hover:opacity-85"
+              style={{ color: themeColor }}
+              title="Nova Conversa"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+
+          {/* Seletor de Abas */}
+          <div className="flex rounded-xl p-1 bg-[var(--panel-bg)] border border-[var(--border-color)]">
+            <button
+              type="button"
+              onClick={() => setSidebarTab('chats')}
+              className="flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all border-none cursor-pointer flex items-center justify-center gap-1.5"
+              style={{
+                backgroundColor: sidebarTab === 'chats' ? 'var(--bg-color)' : 'transparent',
+                color: sidebarTab === 'chats' ? themeColor : 'var(--text-muted)',
+                boxShadow: sidebarTab === 'chats' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              }}
+            >
+              <MessageSquare size={14} />
+              Conversas {rooms.length > 0 && `(${rooms.length})`}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSidebarTab('members');
+                if (communityMembers.length === 0) loadCommunityMembers();
+              }}
+              className="flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all border-none cursor-pointer flex items-center justify-center gap-1.5"
+              style={{
+                backgroundColor: sidebarTab === 'members' ? 'var(--bg-color)' : 'transparent',
+                color: sidebarTab === 'members' ? themeColor : 'var(--text-muted)',
+                boxShadow: sidebarTab === 'members' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              }}
+            >
+              <Users size={14} />
+              Membros {communityMembers.length > 0 && `(${communityMembers.length})`}
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-          {loadingRooms && (
-            <p className="text-center text-sm py-6" style={{ color: 'var(--text-muted)' }}>
-              Carregando conversas...
-            </p>
-          )}
-          {!loadingRooms && rooms.length === 0 && (
-            <p className="text-center text-sm py-6" style={{ color: 'var(--text-muted)' }}>
-              Nenhuma conversa ainda. Clique em + para iniciar!
-            </p>
-          )}
-          {rooms.map((room) => {
-            const isSelected = activeRoom?.id === room.id;
-            return (
-              <div
-                key={room.id}
-                onClick={() => selectRoom(room)}
-                className="p-3 rounded-xl border border-[var(--border-color)] flex items-center justify-between cursor-pointer hover:border-[var(--primary-color)] transition-all"
-                style={isSelected ? { borderColor: themeColor, backgroundColor: 'var(--primary-soft)' } : {}}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-10 w-10 rounded-xl bg-[var(--border-color)] flex items-center justify-center shrink-0" style={{ color: themeColor }}>
-                    {room.type === 'PRIVATE' ? <Lock size={18} /> : <Globe size={18} />}
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-sm font-extrabold truncate" style={{ color: 'var(--text-main)' }}>
-                      {getRoomDisplayName(room)}
-                    </h4>
-                    {room.lastMessage && (
-                      <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-                        <strong>{room.lastMessage.sender?.username}:</strong>{' '}
-                        {room.lastMessage.content || 'Arquivo'}
-                      </p>
-                    )}
+        {/* Conteúdo da Aba: CONVERSAS */}
+        {sidebarTab === 'chats' && (
+          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+            {loadingRooms && (
+              <p className="text-center text-sm py-6" style={{ color: 'var(--text-muted)' }}>
+                Carregando conversas...
+              </p>
+            )}
+            {!loadingRooms && rooms.length === 0 && (
+              <div className="text-center py-8 px-4 flex flex-col items-center gap-3">
+                <p className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>
+                  Nenhuma conversa ativa ainda.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSidebarTab('members')}
+                  className="btn-3d text-xs font-bold py-2 px-4"
+                  style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}
+                >
+                  <Users size={14} /> Ver Membros da Comunidade
+                </button>
+              </div>
+            )}
+            {rooms.map((room) => {
+              const isSelected = activeRoom?.id === room.id;
+              return (
+                <div
+                  key={room.id}
+                  onClick={() => selectRoom(room)}
+                  className="p-3 rounded-xl border border-[var(--border-color)] flex items-center justify-between cursor-pointer hover:border-[var(--primary-color)] transition-all"
+                  style={isSelected ? { borderColor: themeColor, backgroundColor: 'var(--primary-soft)' } : {}}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-10 w-10 rounded-xl bg-[var(--border-color)] flex items-center justify-center shrink-0" style={{ color: themeColor }}>
+                      {room.type === 'PRIVATE' ? <Lock size={18} /> : <Globe size={18} />}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-extrabold truncate" style={{ color: 'var(--text-main)' }}>
+                        {getRoomDisplayName(room)}
+                      </h4>
+                      {room.lastMessage && (
+                        <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                          <strong>{room.lastMessage.sender?.username}:</strong>{' '}
+                          {room.lastMessage.content || 'Arquivo'}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Conteúdo da Aba: MEMBROS DA COMUNIDADE */}
+        {sidebarTab === 'members' && (
+          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+            {/* Campo de filtro rápido */}
+            <div className="relative mb-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2" size={14} style={{ color: 'var(--text-muted)' }} />
+              <input
+                type="text"
+                placeholder="Filtrar estudante ou professor..."
+                className="input-gamified w-full text-xs py-1.5 pl-8 pr-2"
+                value={memberSearchTerm}
+                onChange={(e) => setMemberSearchTerm(e.target.value)}
+              />
+            </div>
+
+            {loadingMembers && (
+              <p className="text-center text-xs py-6" style={{ color: 'var(--text-muted)' }}>
+                Carregando membros da comunidade...
+              </p>
+            )}
+
+            {!loadingMembers && communityMembers.length === 0 && (
+              <p className="text-center text-xs py-6" style={{ color: 'var(--text-muted)' }}>
+                Nenhum membro encontrado.
+              </p>
+            )}
+
+            {communityMembers
+              .filter((u) => {
+                if (!memberSearchTerm.trim()) return true;
+                const lower = memberSearchTerm.toLowerCase();
+                return (
+                  (u.username && u.username.toLowerCase().includes(lower)) ||
+                  (u.email && u.email.toLowerCase().includes(lower))
+                );
+              })
+              .map((member) => (
+                <div
+                  key={member.id}
+                  className="p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--panel-bg)] flex items-center justify-between gap-2 hover:border-[var(--primary-color)] transition-all"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {member.avatarUrl ? (
+                      <img
+                        src={assetUrl(member.avatarUrl)}
+                        alt=""
+                        className="w-9 h-9 rounded-full object-cover shrink-0 border border-[var(--border-color)]"
+                      />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-[var(--border-color)] flex items-center justify-center shrink-0">
+                        <UserIcon size={16} />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-extrabold truncate" style={{ color: 'var(--text-main)' }}>
+                          {member.username || 'Sem username'}
+                        </p>
+                        {member.role === 'ADMIN' && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-red-500/10 text-red-500">
+                            Admin
+                          </span>
+                        )}
+                        {member.role === 'TEACHER' && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-500/10 text-amber-500">
+                            Prof
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] truncate" style={{ color: 'var(--text-muted)' }}>
+                        {member.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleStartDirectChat(member)}
+                    className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--primary-light)] transition-colors cursor-pointer shrink-0"
+                    style={{ background: 'transparent', color: themeColor }}
+                    title={`Conversar com ${member.username || member.email}`}
+                  >
+                    <Send size={13} />
+                  </button>
+                </div>
+              ))}
+          </div>
+        )}
       </div>
 
       {/* Caixa de Chat */}
@@ -528,7 +741,7 @@ export const CommunityChat: React.FC = () => {
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
                   {roomMode === 'private'
-                    ? 'BUSCAR POR USERNAME OU E-MAIL'
+                    ? 'SELECIONE OU BUSQUE UM MEMBRO DA COMUNIDADE'
                     : 'ADICIONAR MEMBROS (OPCIONAL)'}
                 </label>
                 <div className="flex gap-2">
@@ -536,55 +749,78 @@ export const CommunityChat: React.FC = () => {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
                     <input
                       type="text"
-                      placeholder="joao123 ou email@..."
-                      className="input-gamified"
+                      placeholder="Filtrar por username ou email..."
+                      className="input-gamified w-full"
                       style={{ paddingLeft: '36px' }}
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={(e) => handleModalSearchChange(e.target.value)}
                     />
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleSearchUsers}
-                    className="btn-3d text-xs font-bold"
-                    style={{ padding: '8px 14px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}
-                  >
-                    Buscar
-                  </button>
                 </div>
 
-                {searchResults.length > 0 && (
-                  <div className="border border-[var(--border-color)] rounded-xl overflow-hidden bg-[var(--panel-bg)]">
-                    {searchResults.map((u) => (
-                      <button
-                        key={u.id}
-                        type="button"
-                        onClick={() => {
-                          if (roomMode === 'private') setSelectedTarget(u);
-                          else setGroupMembers((prev) => [...prev, u]);
-                          setSearchResults([]);
-                          setSearchTerm('');
-                        }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 text-left border-b border-[var(--border-color)] last:border-b-0 hover:bg-[var(--bg-color)] cursor-pointer"
-                        style={{ background: 'none' }}
-                      >
-                        {u.avatarUrl ? (
-                          <img src={assetUrl(u.avatarUrl)} alt="" className="h-8 w-8 rounded-full object-cover" />
-                        ) : (
-                          <div className="h-8 w-8 rounded-full bg-[var(--border-color)] flex items-center justify-center">
-                            <UserIcon size={14} />
+                {/* Lista de membros com scroll */}
+                <div className="mt-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider block mb-1" style={{ color: 'var(--text-muted)' }}>
+                    Membros disponíveis ({searchResults.length})
+                  </span>
+                  {searchResults.length === 0 ? (
+                    <div className="p-4 text-center border border-[var(--border-color)] rounded-xl bg-[var(--panel-bg)]">
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        Nenhum membro encontrado com este filtro.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="border border-[var(--border-color)] rounded-xl overflow-hidden bg-[var(--panel-bg)] max-h-[220px] overflow-y-auto">
+                      {searchResults.map((u) => (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onClick={() => {
+                            if (roomMode === 'private') setSelectedTarget(u);
+                            else setGroupMembers((prev) => [...prev, u]);
+                            setSearchTerm('');
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2.5 text-left border-b border-[var(--border-color)] last:border-b-0 hover:bg-[var(--bg-color)] cursor-pointer"
+                          style={{ background: 'none' }}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {u.avatarUrl ? (
+                              <img src={assetUrl(u.avatarUrl)} alt="" className="h-8 w-8 rounded-full object-cover shrink-0" />
+                            ) : (
+                              <div className="h-8 w-8 rounded-full bg-[var(--border-color)] flex items-center justify-center shrink-0">
+                                <UserIcon size={14} />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-extrabold truncate" style={{ color: 'var(--text-main)' }}>
+                                  {u.username || 'Sem username'}
+                                </p>
+                                {u.role === 'ADMIN' && (
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-red-500/10 text-red-500">
+                                    Admin
+                                  </span>
+                                )}
+                                {u.role === 'TEACHER' && (
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-500/10 text-amber-500">
+                                    Prof
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] truncate" style={{ color: 'var(--text-muted)' }}>{u.email}</p>
+                            </div>
                           </div>
-                        )}
-                        <div>
-                          <p className="text-sm font-extrabold" style={{ color: 'var(--text-main)' }}>
-                            {u.username || 'Sem username'}
-                          </p>
-                          <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{u.email}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                          <span
+                            className="text-[11px] font-bold px-2 py-1 rounded-lg border border-[var(--border-color)] shrink-0 transition-colors"
+                            style={{ color: themeColor }}
+                          >
+                            Selecionar
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Seleção atual */}

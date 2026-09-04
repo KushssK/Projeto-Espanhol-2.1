@@ -1,11 +1,11 @@
 /**
- * Seed script: Insere CPFs na Whitelist_CPF para permitir cadastro de Staff/Admin.
+ * Seed script: Insere e-mails na WhitelistEmail para permitir cadastro de Staff/Admin
+ * e atualiza usuários existentes correspondentes para role ADMIN.
  *
  * Uso:
  *   npx tsx scripts/seed-whitelist.ts
  *
  * Requer DATABASE_URL no ambiente ou no .env do backend.
- * NÃO exponha este script em logs públicos.
  */
 
 import { PrismaClient } from '../src/generated/prisma/client';
@@ -20,45 +20,50 @@ const adapter = new PrismaPg(process.env.DATABASE_URL);
 const prisma = new PrismaClient({ adapter });
 
 /**
- * Lista de CPFs autorizados para cadastro como Staff.
- * Formato: { cpf: '1133361541', role: 'ADMIN' }
- *
- * O campo 'cpf' deve conter APENAS os 11 dígitos (sem pontuação).
- * A role define qual permissão o usuário receberá ao se cadastrar.
+ * Lista de e-mails autorizados para cadastro como Staff/Admin.
  */
-const WHITELIST_ENTRIES = [
-  { cpf: '11533361541', role: 'ADMIN' as const },
+const WHITELIST_ENTRIES: Array<{ email: string; role: 'ADMIN' | 'TEACHER' }> = [
+  { email: 'kaikyzen@gmail.com', role: 'ADMIN' },
+  { email: 'espanholemrede@gmail.com', role: 'ADMIN' },
+  { email: 'matheusfds408@gmail.com', role: 'ADMIN' },
 ];
 
 async function main() {
-  console.log('🔐 Inserindo CPFs na Whitelist_CPF...\n');
+  console.log('🔐 Semeando WhitelistEmail...\n');
 
   for (const entry of WHITELIST_ENTRIES) {
+    const normalizedEmail = entry.email.trim().toLowerCase();
     try {
-      const existing = await prisma.whitelist_CPF.findUnique({
-        where: { cpf: entry.cpf },
+      const result = await prisma.whitelistEmail.upsert({
+        where: { email: normalizedEmail },
+        update: { role: entry.role },
+        create: { email: normalizedEmail, role: entry.role },
       });
 
-      if (existing) {
-        console.log(`  ⚠️  CPF ${entry.cpf} já existe na whitelist (role: ${existing.role}). Pulando.`);
-        continue;
+      console.log(`  ✅ Whitelist: ${result.email} -> ${result.role}`);
+
+      // Sincronizar usuário se já existir na tabela User
+      const existingUser = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+      });
+
+      if (existingUser && existingUser.role !== entry.role) {
+        await prisma.user.update({
+          where: { email: normalizedEmail },
+          data: { role: entry.role },
+        });
+        console.log(`  👤 Usuário existente promovido para: ${entry.role}`);
       }
-
-      await prisma.whitelist_CPF.create({
-        data: { cpf: entry.cpf, role: entry.role },
-      });
-
-      console.log(`  ✅ CPF inserido: role ${entry.role}`);
     } catch (error) {
-      console.error(`  ❌ Erro ao inserir CPF:`, error);
+      console.error(`  ❌ Erro ao processar e-mail ${normalizedEmail}:`, error);
     }
   }
 
-  // Listar todos os CPFs na whitelist para confirmação
-  const all = await prisma.whitelist_CPF.findMany({ orderBy: { cpf: 'asc' } });
+  // Listar todas as entradas na whitelist para confirmação
+  const all = await prisma.whitelistEmail.findMany({ orderBy: { email: 'asc' } });
   console.log(`\n📋 Whitelist atual (${all.length} registro(s)):`);
   for (const entry of all) {
-    console.log(`  - CPF: ${entry.cpf} → Role: ${entry.role}`);
+    console.log(`  - E-mail: ${entry.email} -> Role: ${entry.role}`);
   }
 
   console.log('\n✅ Seed de whitelist concluído.');
@@ -72,3 +77,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

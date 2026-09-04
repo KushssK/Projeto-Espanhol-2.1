@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useThemeStore } from '../stores/useThemeStore';
-import { BookOpen, Star, HelpCircle, ChevronRight } from 'lucide-react';
+import { BookOpen, Star, HelpCircle, ChevronDown, PlayCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 
 interface Lesson {
   id: string;
   title: string;
   orderIndex: number;
+  published?: boolean;
+  videoUrl?: string | null;
 }
 
 interface Module {
@@ -35,6 +37,21 @@ export const Dashboard: React.FC = () => {
   const [modules, setModules] = useState<Module[]>([]);
   const [userProgress, setUserProgress] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
+
+  const toggleModule = (id: string) => {
+    setExpandedModules((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const isLessonCompleted = (lessonId: string) => {
+    if (!userProgress || !userProgress.progress) return false;
+    return userProgress.progress.some(
+      (p: any) => p.lessonId === lessonId && p.isCompleted
+    );
+  };
 
   const { user } = useAuthStore();
   const { themeColor } = useThemeStore();
@@ -166,80 +183,226 @@ export const Dashboard: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-4">
               {modules
                 .sort((a, b) => a.orderIndex - b.orderIndex)
                 .map((module) => {
-                  const icon =
-                    MODULE_ICONS[module.title] || '📁';
+                  const icon = MODULE_ICONS[module.title] || '📁';
+                  const isExpanded = !!expandedModules[module.id];
                   const lessonCount = module.lessons.length;
+                  const completedLessons = module.lessons.filter((l) =>
+                    isLessonCompleted(l.id)
+                  ).length;
+                  const isAllCompleted = lessonCount > 0 && completedLessons === lessonCount;
 
                   return (
                     <div
                       key={module.id}
-                      onClick={() => navigate(`/modules/${module.id}`)}
-                      className="glass rounded-[24px] border-2 border-[var(--border-color)] p-6 cursor-pointer transition-all hover:border-[var(--primary-color)] hover:scale-[1.02] group"
+                      className={`glass rounded-[24px] border-2 transition-all duration-200 overflow-hidden ${
+                        isExpanded
+                          ? 'border-[var(--primary-color)] shadow-md'
+                          : 'border-[var(--border-color)] hover:border-[var(--primary-color)]'
+                      }`}
                     >
-                      <div className="flex flex-col gap-3">
-                        {/* Icon + Title */}
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
-                              style={{
-                                background: 'var(--bg-color)',
-                                border: '1px solid var(--border-color)',
-                              }}
-                            >
-                              {icon}
-                            </div>
-                            <div>
+                      {/* Header Minimizado do Módulo - Clicável */}
+                      <div
+                        onClick={() => toggleModule(module.id)}
+                        className="p-5 flex items-center justify-between cursor-pointer select-none transition-colors hover:bg-[var(--panel-bg)]"
+                      >
+                        <div className="flex items-center gap-4 min-w-0">
+                          {/* Ícone */}
+                          <div
+                            className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0 transition-transform"
+                            style={{
+                              background: 'var(--bg-color)',
+                              border: '1px solid var(--border-color)',
+                              transform: isExpanded ? 'scale(1.05)' : 'scale(1)',
+                            }}
+                          >
+                            {icon}
+                          </div>
+
+                          {/* Título & Badges */}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
                               <h4
-                                className="text-base font-extrabold leading-tight"
+                                className="text-base sm:text-lg font-extrabold leading-tight truncate"
                                 style={{ color: 'var(--text-main)' }}
                               >
                                 {module.title}
                               </h4>
-                              <span
-                                className="text-xs font-bold"
-                                style={{ color: 'var(--text-muted)' }}
-                              >
-                                {lessonCount}{' '}
-                                {lessonCount === 1 ? 'aula' : 'aulas'}
+                              {isAllCompleted && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                  <CheckCircle2 size={11} /> Concluído
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3 text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
+                              <span className="flex items-center gap-1">
+                                <PlayCircle size={13} style={{ color: themeColor }} />
+                                {lessonCount} {lessonCount === 1 ? 'videoaula' : 'videoaulas'}
+                              </span>
+                              <span>•</span>
+                              <span>
+                                {completedLessons}/{lessonCount} concluídas
                               </span>
                             </div>
                           </div>
-                          <ChevronRight
-                            size={20}
-                            className="shrink-0 mt-1 opacity-40 group-hover:opacity-100 transition-opacity"
-                            style={{ color: themeColor }}
-                          />
                         </div>
 
-                        {/* Description */}
-                        {module.description && (
-                          <p
-                            className="text-sm leading-snug"
-                            style={{ color: 'var(--text-muted)' }}
+                        {/* Seta / Chevron Interativo */}
+                        <div className="flex items-center gap-2 shrink-0 ml-3">
+                          <span className="text-xs font-bold hidden sm:inline" style={{ color: 'var(--text-muted)' }}>
+                            {isExpanded ? 'Ocultar aulas' : 'Ver video-aulas'}
+                          </span>
+                          <button
+                            type="button"
+                            aria-label={isExpanded ? 'Ocultar video-aulas' : 'Expandir video-aulas'}
+                            className="w-10 h-10 rounded-xl flex items-center justify-center border border-[var(--border-color)] transition-all cursor-pointer"
+                            style={{
+                              backgroundColor: isExpanded ? 'var(--primary-light)' : 'transparent',
+                              color: isExpanded ? themeColor : 'var(--text-muted)',
+                            }}
                           >
-                            {module.description}
-                          </p>
-                        )}
-
-                        {/* Enter Button */}
-                        <button
-                          className="btn-3d text-xs font-bold mt-1 self-start"
-                          style={
-                            {
-                              padding: '6px 14px',
-                              '--btn-bg': themeColor,
-                              '--btn-shadow': 'var(--primary-hover)',
-                            } as any
-                          }
-                        >
-                          Entrar no Módulo
-                        </button>
+                            <ChevronDown
+                              size={20}
+                              className="transition-transform duration-300"
+                              style={{
+                                transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                              }}
+                            />
+                          </button>
+                        </div>
                       </div>
+
+                      {/* Conteúdo Expandido com as Video-aulas */}
+                      {isExpanded && (
+                        <div
+                          className="px-5 pb-5 pt-2 border-t border-[var(--border-color)] bg-[var(--bg-color)] flex flex-col gap-4"
+                        >
+                          {module.description && (
+                            <p className="text-sm pt-1" style={{ color: 'var(--text-muted)' }}>
+                              {module.description}
+                            </p>
+                          )}
+
+                          <div className="flex flex-col gap-2">
+                            <span
+                              className="text-[11px] font-black uppercase tracking-wider block"
+                              style={{ color: 'var(--text-muted)' }}
+                            >
+                              Videoaulas deste módulo ({lessonCount})
+                            </span>
+
+                            {module.lessons.length === 0 ? (
+                              <p className="text-xs py-3 text-center" style={{ color: 'var(--text-muted)' }}>
+                                Nenhuma videoaula publicada neste módulo ainda.
+                              </p>
+                            ) : (
+                              <div className="grid grid-cols-1 gap-2">
+                                {module.lessons
+                                  .sort((a, b) => a.orderIndex - b.orderIndex)
+                                  .map((lesson, idx) => {
+                                    const completed = isLessonCompleted(lesson.id);
+
+                                    return (
+                                      <div
+                                        key={lesson.id}
+                                        onClick={() => navigate(`/lessons/${lesson.id}`)}
+                                        className="p-3.5 rounded-2xl border border-[var(--border-color)] bg-[var(--panel-bg)] flex items-center justify-between gap-3 cursor-pointer transition-all hover:border-[var(--primary-color)] hover:translate-x-1 group"
+                                      >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                          {completed ? (
+                                            <div
+                                              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                                              style={{
+                                                backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                                                color: 'var(--color-success)',
+                                              }}
+                                            >
+                                              <CheckCircle2 size={18} />
+                                            </div>
+                                          ) : (
+                                            <div
+                                              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"
+                                              style={{
+                                                backgroundColor: 'var(--primary-light)',
+                                                color: themeColor,
+                                              }}
+                                            >
+                                              <PlayCircle size={18} />
+                                            </div>
+                                          )}
+
+                                          <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                              <span
+                                                className="text-[10px] font-black uppercase tracking-wider"
+                                                style={{ color: 'var(--text-muted)' }}
+                                              >
+                                                Aula {lesson.orderIndex || idx + 1}
+                                              </span>
+                                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-[var(--border-color)] text-[var(--text-muted)]">
+                                                Videoaula
+                                              </span>
+                                            </div>
+                                            <h5
+                                              className="text-sm font-extrabold truncate mt-0.5 group-hover:text-[var(--primary-color)] transition-colors"
+                                              style={{ color: 'var(--text-main)' }}
+                                            >
+                                              {lesson.title}
+                                            </h5>
+                                          </div>
+                                        </div>
+
+                                        <button
+                                          type="button"
+                                          className="btn-3d text-xs font-bold shrink-0 self-center"
+                                          style={
+                                            {
+                                              padding: '6px 14px',
+                                              '--btn-bg': completed
+                                                ? 'var(--bg-color)'
+                                                : themeColor,
+                                              color: completed
+                                                ? 'var(--text-main)'
+                                                : '#fff',
+                                              border: completed
+                                                ? '1px solid var(--border-color)'
+                                                : 'none',
+                                            } as any
+                                          }
+                                        >
+                                          {completed ? 'Rever aula' : 'Assistir aula'}
+                                          <ArrowRight size={13} />
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Ação de rodapé do módulo */}
+                          <div className="flex items-center justify-between pt-2 border-t border-[var(--border-color)]">
+                            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                              Deseja acessar a visão completa deste módulo?
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/modules/${module.id}`);
+                              }}
+                              className="text-xs font-bold hover:underline cursor-pointer border-none bg-transparent"
+                              style={{ color: themeColor }}
+                            >
+                              Ver Módulo Completo →
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

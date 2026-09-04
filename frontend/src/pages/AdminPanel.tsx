@@ -989,8 +989,9 @@ const WhitelistEmailTab: React.FC<{ themeColor: string }> = ({ themeColor }) => 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/admin/whitelist', { email: form.email, role: form.role });
+      const res = await api.post('/admin/whitelist', { email: form.email, role: form.role });
       setForm({ email: '', role: 'TEACHER' });
+      alert(res.data.message || 'E-mail autorizado com sucesso.');
       await load();
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
@@ -1001,7 +1002,8 @@ const WhitelistEmailTab: React.FC<{ themeColor: string }> = ({ themeColor }) => 
   const handleRemove = async (email: string) => {
     if (!window.confirm(`Remover o e-mail ${email} da whitelist?`)) return;
     try {
-      await api.delete(`/admin/whitelist/${encodeURIComponent(email)}`);
+      const res = await api.delete(`/admin/whitelist/${encodeURIComponent(email)}`);
+      alert(res.data.message || 'E-mail removido da whitelist.');
       await load();
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
@@ -1030,7 +1032,7 @@ const WhitelistEmailTab: React.FC<{ themeColor: string }> = ({ themeColor }) => 
           </button>
         </form>
         <p className="text-[11px] mt-2" style={{ color: 'var(--text-muted)' }}>
-          O e-mail autorizado recebe a role automaticamente ao se cadastrar na plataforma.
+          O e-mail autorizado recebe a role automaticamente ao se cadastrar na plataforma. Se o usuário já existir, seu cargo será promovido imediatamente.
         </p>
       </Card>
 
@@ -1053,7 +1055,7 @@ const WhitelistEmailTab: React.FC<{ themeColor: string }> = ({ themeColor }) => 
 };
 
 // ============================================================================
-// Usuários (listar, banir, ver progresso)
+// Usuários (listar, banir, alterar cargo, ver progresso)
 // ============================================================================
 
 const UsersTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
@@ -1078,6 +1080,30 @@ const UsersTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
   useEffect(() => {
     load(page);
   }, [load, page]);
+
+  const changeRole = async (u: AdminUser, newRole: 'STUDENT' | 'TEACHER' | 'ADMIN') => {
+    if (u.role === newRole) return;
+    const labelMap: Record<string, string> = {
+      STUDENT: 'Aluno',
+      TEACHER: 'Professor',
+      ADMIN: 'Administrador',
+    };
+    const confirmMsg =
+      newRole === 'ADMIN'
+        ? `Deseja conceder acesso total de Administrador para ${u.username || u.email}?\n\nEle poderá gerenciar todo o painel administrativo.`
+        : `Deseja alterar o cargo de ${u.username || u.email} para ${labelMap[newRole]}?`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const res = await api.put(`/users/${u.id}/role`, { role: newRole });
+      alert(res.data.message || 'Cargo atualizado com sucesso.');
+      await load(page);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      alert(err.response?.data?.error || 'Erro ao alterar cargo do usuário.');
+    }
+  };
 
   const toggleBan = async (u: AdminUser) => {
     try {
@@ -1118,9 +1144,20 @@ const UsersTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
                 </p>
                 <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{u.email}</p>
               </div>
-              <Badge color={u.role === 'ADMIN' ? themeColor : u.role === 'TEACHER' ? 'var(--color-info)' : 'var(--color-success)'}>
-                {u.role}
-              </Badge>
+              <select
+                value={u.role}
+                onChange={(e) => changeRole(u, e.target.value as 'STUDENT' | 'TEACHER' | 'ADMIN')}
+                className="text-xs font-black uppercase tracking-wider px-2 py-1 rounded-lg border cursor-pointer bg-transparent transition-colors"
+                style={{
+                  borderColor: 'var(--border-color)',
+                  color: u.role === 'ADMIN' ? themeColor : u.role === 'TEACHER' ? 'var(--color-info)' : 'var(--color-success)',
+                }}
+                title="Alterar nível de acesso (role)"
+              >
+                <option value="STUDENT" style={{ background: 'var(--bg-color)', color: 'var(--text-main)' }}>Aluno</option>
+                <option value="TEACHER" style={{ background: 'var(--bg-color)', color: 'var(--text-main)' }}>Professor</option>
+                <option value="ADMIN" style={{ background: 'var(--bg-color)', color: 'var(--text-main)' }}>Admin</option>
+              </select>
               <IconBtn onClick={() => viewProgress(u)} title="Ver progresso"><Eye size={14} /></IconBtn>
               {u.role !== 'ADMIN' && (
                 <IconBtn onClick={() => toggleBan(u)} title={u.isBanned ? 'Desbanir' : 'Banir'} danger>

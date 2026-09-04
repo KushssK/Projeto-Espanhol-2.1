@@ -16,6 +16,8 @@ export const getModules = async (req: Request, res: Response) => {
             id: true,
             title: true,
             orderIndex: true,
+            published: true,
+            videoUrl: true,
           },
         },
       },

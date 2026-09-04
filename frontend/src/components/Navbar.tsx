@@ -5,6 +5,7 @@ import { useThemeStore } from '../stores/useThemeStore';
 import { assetUrl } from '../services/api';
 import { BookOpen, Trophy, MessageSquare, ShieldAlert, LogOut, Sun, Moon, Menu, X, User as UserIcon, Library } from 'lucide-react';
 import { LogoutModal } from './LogoutModal';
+import { ProfileModal } from './ProfileModal';
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuthStore();
@@ -18,6 +19,7 @@ export const Navbar: React.FC = () => {
   });
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   useEffect(() => {
     if (darkMode) {
@@ -43,8 +45,8 @@ export const Navbar: React.FC = () => {
   return (
     <>
     <nav className="glass sticky top-0 z-50 px-6 py-4 flex items-center justify-between border-b border-[var(--border-color)]">
-      {/* Logo & Brand */}
-      <Link to="/" className="flex items-center gap-3 text-decoration-none">
+      {/* Logo & Brand: leva ao dashboard se logado, ou home pública se deslogado */}
+      <Link to={user ? "/dashboard" : "/"} className="flex items-center gap-3 text-decoration-none">
         {logoUrl ? (
           <img src={assetUrl(logoUrl)} alt="Logo" className="h-10 w-auto object-contain" />
         ) : (
@@ -94,27 +96,37 @@ export const Navbar: React.FC = () => {
         </button>
 
         {user ? (
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowProfileModal(true)}
+              className="flex items-center gap-2.5 px-3 py-1.5 rounded-2xl hover:bg-[var(--border-color)] transition-all cursor-pointer border border-transparent hover:border-[var(--border-color)]"
+              style={{ background: 'transparent' }}
+              title="Ver minhas informações de login e perfil"
+            >
               {user.avatarUrl ? (
                 <img 
                   src={assetUrl(user.avatarUrl)} 
                   alt="Avatar" 
-                  className="h-9 w-9 rounded-full object-cover border-2"
+                  className="h-8 w-8 rounded-full object-cover border-2"
                   style={{ borderColor: themeColor }}
                 />
               ) : (
-                <div className="h-9 w-9 rounded-full bg-[var(--border-color)] flex items-center justify-center text-[var(--text-main)]">
-                  <UserIcon size={18} />
+                <div className="h-8 w-8 rounded-full bg-[var(--border-color)] flex items-center justify-center text-[var(--text-main)]">
+                  <UserIcon size={16} />
                 </div>
               )}
-              <span className="font-bold text-sm" style={{ color: 'var(--text-main)' }}>{user.username}</span>
-            </div>
+              <div className="flex flex-col text-left">
+                <span className="font-extrabold text-xs leading-tight" style={{ color: 'var(--text-main)' }}>{user.username}</span>
+                <span className="text-[10px] font-bold leading-tight" style={{ color: themeColor }}>Minha Conta</span>
+              </div>
+            </button>
+
             <button 
               onClick={() => setShowLogoutModal(true)}
               className="p-2 rounded-full hover:bg-[var(--color-danger)] hover:text-white transition-colors cursor-pointer"
               style={{ color: 'var(--text-muted)', border: 'none', background: 'none' }}
-              title="Sair"
+              title="Sair da conta"
             >
               <LogOut size={18} />
             </button>
@@ -166,23 +178,32 @@ export const Navbar: React.FC = () => {
           )}
           <hr className="border-[var(--border-color)]" />
           {user ? (
-            <div className="flex items-center justify-between py-2">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2 py-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setShowProfileModal(true);
+                }}
+                className="flex items-center gap-3 p-2.5 rounded-2xl border border-[var(--border-color)] bg-[var(--panel-bg)] cursor-pointer text-left w-full"
+              >
                 {user.avatarUrl ? (
-                  <img src={assetUrl(user.avatarUrl)} alt="Avatar" className="h-8 w-8 rounded-full object-cover" />
+                  <img src={assetUrl(user.avatarUrl)} alt="Avatar" className="h-9 w-9 rounded-full object-cover" />
                 ) : (
-                  <div className="h-8 w-8 rounded-full bg-[var(--border-color)] flex items-center justify-center">
-                    <UserIcon size={16} />
+                  <div className="h-9 w-9 rounded-full bg-[var(--border-color)] flex items-center justify-center">
+                    <UserIcon size={18} />
                   </div>
                 )}
-                <span className="font-bold text-sm">{user.username}</span>
-              </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-extrabold text-sm block truncate" style={{ color: 'var(--text-main)' }}>{user.username}</span>
+                  <span className="text-xs block" style={{ color: themeColor }}>Ver informações de login</span>
+                </div>
+              </button>
               <button 
                 onClick={() => { setMobileMenuOpen(false); setShowLogoutModal(true); }}
-                className="flex items-center gap-2 font-bold text-[var(--color-danger)] cursor-pointer"
-                style={{ border: 'none', background: 'none' }}
+                className="flex items-center justify-center gap-2 font-bold text-[var(--color-danger)] cursor-pointer py-2 border-none bg-transparent"
               >
-                <LogOut size={16} /> Sair
+                <LogOut size={16} /> Sair da conta
               </button>
             </div>
           ) : (
@@ -193,6 +214,15 @@ export const Navbar: React.FC = () => {
         </div>
       )}
     </nav>
+
+    <ProfileModal
+      isOpen={showProfileModal}
+      onClose={() => setShowProfileModal(false)}
+      onLogoutClick={() => {
+        setShowProfileModal(false);
+        setShowLogoutModal(true);
+      }}
+    />
 
     <LogoutModal
       isOpen={showLogoutModal}

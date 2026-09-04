@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useThemeStore } from '../stores/useThemeStore';
+import { useAuthStore } from '../stores/useAuthStore';
 import {
   BookOpen,
   PlayCircle,
@@ -27,6 +28,7 @@ import {
    ────────────────────────────────────────────────────────── */
 const Hero: React.FC = () => {
   const { themeColor } = useThemeStore();
+  const { user } = useAuthStore();
 
   return (
     <section className="relative min-h-[90vh] flex items-center justify-center px-4 py-20 overflow-hidden">
@@ -70,14 +72,25 @@ const Hero: React.FC = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-            <Link
-              to="/register"
-              className="btn-3d text-base px-8 py-4"
-              style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
-            >
-              Começar agora
-              <ArrowRight size={18} />
-            </Link>
+            {user ? (
+              <Link
+                to="/dashboard"
+                className="btn-3d text-base px-8 py-4"
+                style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
+              >
+                Continuar estudando
+                <ArrowRight size={18} />
+              </Link>
+            ) : (
+              <Link
+                to="/register"
+                className="btn-3d text-base px-8 py-4"
+                style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
+              >
+                Começar agora
+                <ArrowRight size={18} />
+              </Link>
+            )}
             <a
               href="#sobre"
               className="btn-3d btn-secondary text-base px-8 py-4"
@@ -304,6 +317,7 @@ const Recursos: React.FC = () => {
    ────────────────────────────────────────────────────────── */
 const Modulos: React.FC = () => {
   const { themeColor } = useThemeStore();
+  const { user } = useAuthStore();
 
   return (
     <section id="modulos" className="py-20 px-4">
@@ -361,14 +375,25 @@ const Modulos: React.FC = () => {
           <p className="text-base" style={{ color: 'var(--text-muted)' }}>
             Para acessar os módulos, crie sua conta gratuita e comece sua jornada de aprendizado.
           </p>
-          <Link
-            to="/register"
-            className="btn-3d self-start text-sm px-6 py-3"
-            style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
-          >
-            Criar conta gratuita
-            <ChevronRight size={16} />
-          </Link>
+          {user ? (
+            <Link
+              to="/dashboard"
+              className="btn-3d self-start text-sm px-6 py-3"
+              style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
+            >
+              Ir para os Módulos
+              <ChevronRight size={16} />
+            </Link>
+          ) : (
+            <Link
+              to="/register"
+              className="btn-3d self-start text-sm px-6 py-3"
+              style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
+            >
+              Criar conta gratuita
+              <ChevronRight size={16} />
+            </Link>
+          )}
         </div>
       </div>
     </section>
@@ -521,6 +546,7 @@ const ComoFunciona: React.FC = () => {
    ────────────────────────────────────────────────────────── */
 const CtaFinal: React.FC = () => {
   const { themeColor } = useThemeStore();
+  const { user } = useAuthStore();
 
   return (
     <section className="py-20 px-4">
@@ -541,16 +567,29 @@ const CtaFinal: React.FC = () => {
               Pronto para começar a aprender <span className="grad-text">espanhol?</span>
             </h2>
             <p className="text-base max-w-md" style={{ color: 'var(--text-muted)' }}>
-              Crie sua conta gratuita agora e comece sua jornada de aprendizado com o Espanhol em Rede.
+              {user
+                ? 'Continue sua jornada de aprendizado no seu próprio ritmo agora mesmo.'
+                : 'Crie sua conta gratuita agora e comece sua jornada de aprendizado com o Espanhol em Rede.'}
             </p>
-            <Link
-              to="/register"
-              className="btn-3d text-base px-10 py-4"
-              style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
-            >
-              Começar agora
-              <ArrowRight size={18} />
-            </Link>
+            {user ? (
+              <Link
+                to="/dashboard"
+                className="btn-3d text-base px-10 py-4"
+                style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
+              >
+                Continuar estudando
+                <ArrowRight size={18} />
+              </Link>
+            ) : (
+              <Link
+                to="/register"
+                className="btn-3d text-base px-10 py-4"
+                style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
+              >
+                Começar agora
+                <ArrowRight size={18} />
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -563,6 +602,7 @@ const CtaFinal: React.FC = () => {
    ────────────────────────────────────────────────────────── */
 const Footer: React.FC = () => {
   const { themeColor } = useThemeStore();
+  const { user } = useAuthStore();
 
   return (
     <footer className="border-t border-[var(--border-color)] py-12 px-4" style={{ backgroundColor: 'var(--bg-color)' }}>
@@ -588,12 +628,28 @@ const Footer: React.FC = () => {
           <Link to="/" className="text-sm font-bold hover:underline" style={{ color: 'var(--text-muted)' }}>
             Início
           </Link>
-          <Link to="/login" className="text-sm font-bold hover:underline" style={{ color: 'var(--text-muted)' }}>
-            Login
-          </Link>
-          <Link to="/register" className="text-sm font-bold hover:underline" style={{ color: 'var(--text-muted)' }}>
-            Cadastro
-          </Link>
+          {user ? (
+            <>
+              <Link to="/dashboard" className="text-sm font-bold hover:underline" style={{ color: 'var(--text-muted)' }}>
+                Módulos
+              </Link>
+              <Link to="/leaderboard" className="text-sm font-bold hover:underline" style={{ color: 'var(--text-muted)' }}>
+                Ranking
+              </Link>
+              <Link to="/chat" className="text-sm font-bold hover:underline" style={{ color: 'var(--text-muted)' }}>
+                Comunidade
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="text-sm font-bold hover:underline" style={{ color: 'var(--text-muted)' }}>
+                Login
+              </Link>
+              <Link to="/register" className="text-sm font-bold hover:underline" style={{ color: 'var(--text-muted)' }}>
+                Cadastro
+              </Link>
+            </>
+          )}
           <a href="#sobre" className="text-sm font-bold hover:underline" style={{ color: 'var(--text-muted)' }}>
             Sobre
           </a>

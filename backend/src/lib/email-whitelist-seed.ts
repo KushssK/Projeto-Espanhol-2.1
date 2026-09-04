@@ -17,12 +17,15 @@ import { prisma } from './prisma';
  */
 const WHITELIST_ENTRIES: Array<{ email: string; role: 'ADMIN' | 'TEACHER' }> = [
   { email: 'kaikyzen@gmail.com', role: 'ADMIN' },
+  { email: 'espanholemrede@gmail.com', role: 'ADMIN' },
+  { email: 'matheusfds408@gmail.com', role: 'ADMIN' },
 ];
 
 export async function seedEmailWhitelist(): Promise<void> {
   let inserted = 0;
   let updated = 0;
   let skipped = 0;
+  let usersPromoted = 0;
 
   for (const entry of WHITELIST_ENTRIES) {
     try {
@@ -44,24 +47,38 @@ export async function seedEmailWhitelist(): Promise<void> {
         } else {
           skipped++;
         }
-        continue;
+      } else {
+        await prisma.whitelistEmail.create({
+          data: { email: normalizedEmail, role: entry.role },
+        });
+        inserted++;
       }
 
-      await prisma.whitelistEmail.create({
-        data: { email: normalizedEmail, role: entry.role },
+      // Se o usuário já estiver cadastrado na tabela User com role inferior, atualizar
+      const existingUser = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
       });
-      inserted++;
+
+      if (existingUser && existingUser.role !== entry.role) {
+        await prisma.user.update({
+          where: { email: normalizedEmail },
+          data: { role: entry.role },
+        });
+        usersPromoted++;
+      }
     } catch {
       // Se houver erro de concorrência, ignorar
       skipped++;
     }
   }
 
-  if (inserted > 0 || updated > 0 || skipped > 0) {
+  if (inserted > 0 || updated > 0 || skipped > 0 || usersPromoted > 0) {
     const parts: string[] = [];
     if (inserted > 0) parts.push(`${inserted} inserido(s)`);
     if (updated > 0) parts.push(`${updated} atualizado(s)`);
     if (skipped > 0) parts.push(`${skipped} já existente(s)`);
+    if (usersPromoted > 0) parts.push(`${usersPromoted} usuário(s) promovido(s) a ADMIN`);
     console.log(`🔐 Whitelist de e-mails: ${parts.join(', ')}.`);
   }
 }
+

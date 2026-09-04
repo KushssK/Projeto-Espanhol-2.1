@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { Navbar } from './components/Navbar'
 import { PublicNavbar } from './components/PublicNavbar'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { PublicOnlyRoute } from './components/PublicOnlyRoute'
 import { useAuthStore } from './stores/useAuthStore'
 import { useThemeStore } from './stores/useThemeStore'
 import { LandingPage } from './pages/LandingPage'
@@ -74,9 +75,11 @@ function App() {
         {/* Landing Page — pública */}
         <Route path="/" element={<LandingPage />} />
 
-        {/* Auth pages */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        {/* Auth pages — redireciona usuários autenticados para /dashboard */}
+        <Route element={<PublicOnlyRoute />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+        </Route>
 
         {/* Rotas protegidas (qualquer usuário autenticado) */}
         <Route element={<ProtectedRoute />}>

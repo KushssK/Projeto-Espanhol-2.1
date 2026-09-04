@@ -117,7 +117,35 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
       take: 10,
     });
 
-    return res.status(200).json(users);
+    const candidateIds = users.map((u) => u.id);
+
+    // Quais candidatos já são amigos do usuário autenticado?
+    const friendRows = await prisma.friendship.findMany({
+      where: { userId: currentUserId, friendId: { in: candidateIds } },
+      select: { friendId: true },
+    });
+    const friendIds = new Set(friendRows.map((r) => r.friendId));
+
+    // Bloqueados nas DUAS direções somem da busca (invisibilidade mútua)
+    const blockRows = await prisma.userBlock.findMany({
+      where: {
+        OR: [
+          { blockerId: currentUserId, blockedId: { in: candidateIds } },
+          { blockerId: { in: candidateIds }, blockedId: currentUserId },
+        ],
+      },
+      select: { blockerId: true, blockedId: true },
+    });
+    const blockedPartnerIds = new Set<string>();
+    for (const row of blockRows) {
+      blockedPartnerIds.add(row.blockerId === currentUserId ? row.blockedId : row.blockerId);
+    }
+
+    const results = users
+      .filter((u) => !blockedPartnerIds.has(u.id))
+      .map((u) => ({ ...u, isFriend: friendIds.has(u.id) }));
+
+    return res.status(200).json(results);
   } catch (error) {
     console.error('Erro ao buscar usuários:', error);
     return res.status(500).json({ error: 'Erro interno no servidor' });

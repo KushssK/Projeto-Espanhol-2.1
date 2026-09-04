@@ -1,7 +1,8 @@
 import { Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { AuthRequest } from '../middlewares/auth.middleware';
-import { getIO } from '../socket';
+import { getIO, leaveUserRooms } from '../socket';
+import { areFriends, isPrivateRoomBlocked } from '../lib/friendship';
 import { MediaType } from '../generated/prisma/enums';
 
 // ============================================================================
@@ -37,6 +38,13 @@ export const createPrivateRoom = async (req: AuthRequest, res: Response) => {
     }
     if (targetUser.isBanned) {
       return res.status(403).json({ error: 'Este usuário está banido.' });
+    }
+
+    // Conversa privada SOMENTE entre amigos (comunidade privada)
+    if (!(await areFriends(userId, targetUserId))) {
+      return res.status(403).json({
+        error: 'Converse apenas com amigos. Adicione a pessoa aos seus amigos primeiro.',
+      });
     }
 
     // Verificar se já existe sala privada entre os dois
@@ -125,6 +133,19 @@ export const createGroupRoom = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Grupos só podem conter AMIGOS do criador (selecionados explicitamente)
+    const friendRows = await prisma.friendship.findMany({
+      where: { userId, friendId: { in: validIds } },
+      select: { friendId: true },
+    });
+    const friendIdSet = new Set(friendRows.map((r) => r.friendId));
+    const notFriends = validIds.filter((id) => !friendIdSet.has(id));
+    if (notFriends.length > 0) {
+      return res.status(403).json({
+        error: 'Somente amigos podem ser adicionados ao grupo. Adicione-os aos seus amigos primeiro.',
+      });
+    }
+
     const allMemberIds = [userId, ...validIds];
 
     const newRoom = await prisma.chatRoom.create({
@@ -189,12 +210,23 @@ export const getMyRooms = async (req: AuthRequest, res: Response) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Formatar resposta
-    const formattedRooms = rooms.map((room: any) => ({
-      ...room,
-      lastMessage: room.messages[0] || null,
-      messages: undefined, // Remover array completo
-    }));
+    // Formatar resposta (com indicador de não lidas)
+    const formattedRooms = rooms.map((room: any) => {
+      const ownMembership = room.members.find((m: any) => m.userId === userId);
+      const last = room.messages[0] || null;
+      const unread = !!(
+        last &&
+        ownMembership &&
+        last.sender.id !== userId &&
+        (!ownMembership.lastReadAt || new Date(ownMembership.lastReadAt) < new Date(last.createdAt))
+      );
+      return {
+        ...room,
+        lastMessage: last,
+        unread,
+        messages: undefined, // Remover array completo
+      };
+    });
 
     return res.status(200).json(formattedRooms);
   } catch (error) {
@@ -258,13 +290,19 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     const { content } = req.body;
     const file = req.file;
 
-    // Verificar se o usuário é membro da sala
-    const membership = await prisma.roomMember.findUnique({
-      where: { userId_chatRoomId: { userId, chatRoomId: roomId } },
+    // Verificar se o usuário é membro da sala (e pegar tipo + membros p/ bloqueio)
+    const room = await prisma.chatRoom.findUnique({
+      where: { id: roomId },
+      select: { type: true, members: { select: { userId: true } } },
     });
 
-    if (!membership) {
+    if (!room || !room.members.some((m) => m.userId === userId)) {
       return res.status(403).json({ error: 'Você não é membro desta sala.' });
+    }
+
+    // Sala privada com bloqueio (qualquer direção) → mensagem bloqueada
+    if (await isPrivateRoomBlocked(userId, room)) {
+      return res.status(403).json({ error: 'Você não pode enviar mensagens para este usuário.' });
     }
 
     if (!content && !file) {
@@ -300,6 +338,91 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     return res.status(201).json(message);
   } catch (error) {
     console.error('Erro ao enviar mensagem:', error);
+    return res.status(500).json({ error: 'Erro interno no servidor' });
+  }
+};
+
+// ============================================================================
+// POST /api/chat/rooms/:roomId/read — Marcar sala como lida (não lidas)
+// ============================================================================
+export const markRoomRead = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const roomId = req.params.roomId as string;
+
+    const membership = await prisma.roomMember.findUnique({
+      where: { userId_chatRoomId: { userId, chatRoomId: roomId } },
+    });
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Você não é membro desta sala.' });
+    }
+
+    await prisma.roomMember.update({
+      where: { userId_chatRoomId: { userId, chatRoomId: roomId } },
+      data: { lastReadAt: new Date() },
+    });
+
+    return res.status(200).json({ ok: true });
+  } catch (error) {
+    console.error('Erro ao marcar sala como lida:', error);
+    return res.status(500).json({ error: 'Erro interno no servidor' });
+  }
+};
+
+// ============================================================================
+// POST /api/chat/rooms/:roomId/leave — Sair de um grupo
+// ============================================================================
+export const leaveGroupRoom = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const roomId = req.params.roomId as string;
+
+    const room = await prisma.chatRoom.findUnique({
+      where: { id: roomId },
+      select: { id: true, type: true, members: { select: { userId: true } } },
+    });
+
+    if (!room) {
+      return res.status(404).json({ error: 'Sala não encontrada.' });
+    }
+    if (room.type !== 'GROUP') {
+      return res.status(400).json({ error: 'Só é possível sair de grupos.' });
+    }
+    if (!room.members.some((m) => m.userId === userId)) {
+      return res.status(403).json({ error: 'Você não é membro desta sala.' });
+    }
+
+    // Remover a associação do usuário
+    await prisma.roomMember.delete({
+      where: { userId_chatRoomId: { userId, chatRoomId: roomId } },
+    });
+
+    const remainingMemberIds = room.members
+      .filter((m) => m.userId !== userId)
+      .map((m) => m.userId);
+
+    // Grupo sem ninguém → remove mensagens e a sala (sem órfãos)
+    if (remainingMemberIds.length === 0) {
+      await prisma.message.deleteMany({ where: { chatRoomId: roomId } });
+      await prisma.chatRoom.delete({ where: { id: roomId } });
+    } else {
+      // Avisa quem ficou (atualiza participantes em tempo real)
+      const io = getIO();
+      if (io) {
+        io.to(roomId).emit('member_left', { roomId, userId, memberIds: remainingMemberIds });
+      }
+    }
+
+    // Remove TODOS os sockets do usuário da sala (inclusive outras abas)
+    leaveUserRooms(userId, roomId);
+
+    return res.status(200).json({
+      message: 'Você saiu do grupo.',
+      roomId,
+    });
+  } catch (error) {
+    console.error('Erro ao sair do grupo:', error);
     return res.status(500).json({ error: 'Erro interno no servidor' });
   }
 };

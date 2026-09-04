@@ -101,8 +101,31 @@ export const createGroupRoom = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Nome do grupo é obrigatório.' });
     }
 
-    // Incluir o criador automaticamente
-    const allMemberIds = Array.from(new Set([userId, ...(memberIds || [])]));
+    // Somente usuários EXPLICITAMENTE selecionados entram no grupo
+    // (o criador é incluído automaticamente). Nada de listas públicas.
+    const requested: string[] = Array.isArray(memberIds) ? memberIds : [];
+    const uniqueIds = Array.from(
+      new Set(requested.filter((id: string) => typeof id === 'string' && id && id !== userId))
+    );
+
+    if (uniqueIds.length === 0) {
+      return res.status(400).json({ error: 'Adicione ao menos uma pessoa ao grupo.' });
+    }
+
+    // Validar que todos os selecionados existem e não estão banidos
+    const validUsers = await prisma.user.findMany({
+      where: { id: { in: uniqueIds }, isBanned: false },
+      select: { id: true },
+    });
+    const validIds = validUsers.map((u) => u.id);
+
+    if (validIds.length !== uniqueIds.length) {
+      return res.status(400).json({
+        error: 'Um ou mais membros selecionados não existem ou estão banidos.',
+      });
+    }
+
+    const allMemberIds = [userId, ...validIds];
 
     const newRoom = await prisma.chatRoom.create({
       data: {

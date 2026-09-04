@@ -39,6 +39,14 @@ model User {
   progress            UserProgress[]
   roomMembers         RoomMember[]
   messages            Message[]
+
+  // Amigos (2 linhas-espelho por amizade: uma com este usuário como userId)
+  friendships     Friendship[] @relation("UserFriendship")
+  friendOf        Friendship[] @relation("UserFriendOf")
+
+  // Bloqueios
+  blocksMade     UserBlock[] @relation("BlockIssuer")
+  blocksReceived UserBlock[] @relation("BlockTarget")
 }
 
 // Whitelist de e-mails — quem está aqui recebe a role automaticamente ao cadastrar
@@ -169,14 +177,47 @@ model ChatRoom {
 }
 
 model RoomMember {
-  userId     String
-  chatRoomId String
-  joinedAt   DateTime @default(now())
+  userId      String
+  chatRoomId  String
+  joinedAt    DateTime  @default(now())
+  lastReadAt  DateTime? // Última leitura do usuário — para indicador de não lidas
 
   user       User     @relation(fields: [userId], references: [id])
   chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id])
 
   @@id([userId, chatRoomId]) // Chave composta
+}
+
+// ============================================================================
+// 6. SISTEMA DE AMIGOS (COMUNIDADE PRIVADA)
+// ============================================================================
+
+// Amizade — 2 linhas-espelho por relacionamento (A→B e B→A): consulta simples
+// ("amigos de X" = WHERE userId = X) e sem duplicidade (a criação valida que
+// não existe linha em nenhuma das direções antes de inserir).
+model Friendship {
+  id        String   @id @default(uuid())
+  userId    String   // Quem adicionou
+  friendId  String   // Quem foi adicionado
+  createdAt DateTime @default(now())
+
+  user   User @relation("UserFriendship", fields: [userId], references: [id], onDelete: Cascade)
+  friend User @relation("UserFriendOf", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+}
+
+// Bloqueio — impede: aparecer na busca (nas duas direções), novas amizades e
+// envio de mensagens privadas. Ao bloquear, a amizade é removida.
+model UserBlock {
+  blockerId String   // Quem bloqueou
+  blockedId String   // Quem foi bloqueado
+  createdAt DateTime @default(now())
+
+  blocker User @relation("BlockIssuer", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlockTarget", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
 }
 
 model Message {

@@ -2,6 +2,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import jwt from 'jsonwebtoken';
 import { prisma } from './lib/prisma';
+import { corsOriginCallback } from './lib/cors-origins';
 
 // ============================================================================
 // Tipos
@@ -29,7 +30,7 @@ export const getIO = () => ioInstance;
 export const setupSocket = (server: HttpServer) => {
   const io = new SocketIOServer(server, {
     cors: {
-      origin: process.env.CORS_ORIGIN || false,
+      origin: corsOriginCallback,
       methods: ['GET', 'POST'],
     },
     maxHttpBufferSize: 20 * 1024 * 1024, // 20MB — compatível com o limite de upload

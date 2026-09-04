@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import { corsOriginCallback } from './lib/cors-origins';
 import fs from 'fs';
 import { createServer } from 'http';
 import { setupSocket } from './socket';
@@ -39,7 +40,7 @@ app.set('trust proxy', 1);
 
 // Middleware global
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || false,
+  origin: corsOriginCallback,
   credentials: true,
 }));
 app.use(express.json());

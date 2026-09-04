@@ -12,8 +12,7 @@ import {
   Shield,
   Calendar,
   Lock,
-  Eye,
-  EyeOff,
+  RefreshCw,
   Sparkles,
 } from 'lucide-react';
 
@@ -41,15 +40,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [savingUsername, setSavingUsername] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(false);
 
-  // Password state
-  const [showPasswordSection, setShowPasswordSection] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showCurrentPass, setShowCurrentPass] = useState(false);
-  const [showNewPass, setShowNewPass] = useState(false);
-  const [savingPassword, setSavingPassword] = useState(false);
-  const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  // Access code state
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [generatingCode, setGeneratingCode] = useState(false);
+  const [codeMsg, setCodeMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Avatar upload state
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -68,11 +62,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   // Fetch complete profile on open
   useEffect(() => {
     if (isOpen) {
-      setPasswordMsg(null);
+      setCodeMsg(null);
+      setGeneratedCode(null);
       setAvatarError('');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
       setIsEditingUsername(false);
 
       api
@@ -155,43 +147,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     }
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPasswordMsg(null);
-
-    if (!currentPassword) {
-      setPasswordMsg({ type: 'error', text: 'Informe a senha atual.' });
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      setPasswordMsg({ type: 'error', text: 'A nova senha deve ter no mínimo 6 caracteres.' });
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setPasswordMsg({ type: 'error', text: 'A nova senha e a confirmação não conferem.' });
-      return;
-    }
-
-    setSavingPassword(true);
+  const handleRegenerateCode = async () => {
+    if (!window.confirm('Gerar um novo código de acesso? O código atual será invalidado imediatamente.')) return;
+    setGeneratingCode(true);
+    setCodeMsg(null);
     try {
-      await api.put('/users/me/password', {
-        currentPassword,
-        newPassword,
-      });
-      setPasswordMsg({ type: 'success', text: 'Senha alterada com sucesso!' });
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setTimeout(() => setShowPasswordSection(false), 2000);
+      const res = await api.post('/auth/regenerate-code');
+      setGeneratedCode(res.data.accessCode);
+      setCodeMsg({ type: 'success', text: 'Novo código gerado! Guarde-o agora — ele será exibido apenas uma vez.' });
     } catch (err: any) {
-      setPasswordMsg({
-        type: 'error',
-        text: err.response?.data?.error || 'Erro ao alterar senha. Verifique a senha atual.',
-      });
+      setCodeMsg({ type: 'error', text: err.response?.data?.error || 'Erro ao gerar novo código.' });
     } finally {
-      setSavingPassword(false);
+      setGeneratingCode(false);
     }
   };
 
@@ -487,152 +454,79 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             </div>
           </div>
 
-          {/* Seção: Segurança e Alteração de Senha */}
+          {/* Seção: Segurança da Conta — código de acesso */}
           <div className="border-t border-[var(--border-color)] pt-5 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <h3
-                className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5"
-                style={{ color: 'var(--text-muted)' }}
-              >
-                <Lock size={14} style={{ color: themeColor }} />
-                Segurança da Conta
-              </h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowPasswordSection(!showPasswordSection);
-                  setPasswordMsg(null);
+            <h3
+              className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <Lock size={14} style={{ color: themeColor }} />
+              Segurança da Conta
+            </h3>
+
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              O acesso à sua conta usa <strong>e-mail + código de acesso</strong> de 6 caracteres.
+              Você pode gerar um novo código a qualquer momento — o anterior é invalidado na hora.
+            </p>
+
+            <button
+              type="button"
+              onClick={handleRegenerateCode}
+              disabled={generatingCode}
+              className="btn-3d text-xs font-bold self-start"
+              style={{ padding: '8px 16px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}
+            >
+              {generatingCode ? 'Gerando...' : <><RefreshCw size={14} /> Gerar novo código de acesso</>}
+            </button>
+
+            {codeMsg && (
+              <div
+                className="p-3 rounded-xl text-xs font-bold border"
+                style={{
+                  backgroundColor:
+                    codeMsg.type === 'success'
+                      ? 'rgba(34, 197, 94, 0.1)'
+                      : 'rgba(239, 68, 68, 0.1)',
+                  borderColor:
+                    codeMsg.type === 'success'
+                      ? 'var(--color-success)'
+                      : 'var(--color-danger)',
+                  color:
+                    codeMsg.type === 'success'
+                      ? 'var(--color-success)'
+                      : 'var(--color-danger)',
                 }}
-                className="text-xs font-bold cursor-pointer border-none bg-transparent hover:underline"
-                style={{ color: themeColor }}
               >
-                {showPasswordSection ? 'Ocultar' : 'Alterar Senha'}
-              </button>
-            </div>
+                {codeMsg.text}
+              </div>
+            )}
 
-            {showPasswordSection && (
-              <form
-                onSubmit={handleChangePassword}
-                className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--panel-bg)] flex flex-col gap-3 transition-all"
-              >
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  Altere a senha usada para acessar sua conta nesta plataforma.
+            {generatedCode && (
+              <div className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--panel-bg)] flex flex-col gap-3 items-center text-center">
+                <p className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
+                  SEU NOVO CÓDIGO DE ACESSO
                 </p>
-
-                {passwordMsg && (
-                  <div
-                    className="p-3 rounded-xl text-xs font-bold border"
-                    style={{
-                      backgroundColor:
-                        passwordMsg.type === 'success'
-                          ? 'rgba(34, 197, 94, 0.1)'
-                          : 'rgba(239, 68, 68, 0.1)',
-                      borderColor:
-                        passwordMsg.type === 'success'
-                          ? 'var(--color-success)'
-                          : 'var(--color-danger)',
-                      color:
-                        passwordMsg.type === 'success'
-                          ? 'var(--color-success)'
-                          : 'var(--color-danger)',
-                    }}
-                  >
-                    {passwordMsg.text}
-                  </div>
-                )}
-
-                {/* Senha Atual */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold" style={{ color: 'var(--text-muted)' }}>
-                    SENHA ATUAL
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showCurrentPass ? 'text' : 'password'}
-                      className="input-gamified w-full text-sm pr-10"
-                      placeholder="Digite sua senha atual"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrentPass(!showCurrentPass)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 border-none bg-transparent cursor-pointer"
-                      style={{ color: 'var(--text-muted)' }}
-                    >
-                      {showCurrentPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
+                <div
+                  className="text-3xl font-black tracking-[0.3em] font-mono px-6 py-3 rounded-xl border-2"
+                  style={{ borderColor: themeColor, color: themeColor, backgroundColor: 'var(--primary-light)' }}
+                >
+                  {generatedCode}
                 </div>
-
-                {/* Nova Senha */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold" style={{ color: 'var(--text-muted)' }}>
-                    NOVA SENHA (MÍNIMO 6 CARACTERES)
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showNewPass ? 'text' : 'password'}
-                      className="input-gamified w-full text-sm pr-10"
-                      placeholder="Digite a nova senha"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      required
-                      minLength={6}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPass(!showNewPass)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 border-none bg-transparent cursor-pointer"
-                      style={{ color: 'var(--text-muted)' }}
-                    >
-                      {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Confirmar Nova Senha */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold" style={{ color: 'var(--text-muted)' }}>
-                    CONFIRMAR NOVA SENHA
-                  </label>
-                  <input
-                    type={showNewPass ? 'text' : 'password'}
-                    className="input-gamified w-full text-sm"
-                    placeholder="Repita a nova senha"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowPasswordSection(false);
-                      setPasswordMsg(null);
-                    }}
-                    className="text-xs font-bold px-3 py-2 rounded-xl border border-[var(--border-color)] cursor-pointer"
-                    style={{ background: 'transparent', color: 'var(--text-muted)' }}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={savingPassword}
-                    className="btn-3d text-xs font-bold"
-                    style={{
-                      padding: '8px 16px',
-                      '--btn-bg': themeColor,
-                      '--btn-shadow': 'var(--primary-hover)',
-                    } as any}
-                  >
-                    {savingPassword ? 'Salvando...' : 'Atualizar Senha'}
-                  </button>
-                </div>
-              </form>
+                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                  ⚠️ Este código é exibido apenas uma vez. Guarde-o em local seguro.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatedCode);
+                    setCodeMsg({ type: 'success', text: 'Código copiado para a área de transferência!' });
+                  }}
+                  className="btn-3d text-xs font-bold"
+                  style={{ padding: '6px 14px', '--btn-bg': 'var(--bg-color)', color: 'var(--text-main)', border: '1px solid var(--border-color)' } as any}
+                >
+                  <Copy size={13} /> Copiar código
+                </button>
+              </div>
             )}
           </div>
         </div>

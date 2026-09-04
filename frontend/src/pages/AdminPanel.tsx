@@ -234,7 +234,7 @@ const OverviewTab: React.FC<{ themeColor: string; onGo: (t: Tab) => void }> = ({
       <Card title="Lembrete de privacidade">
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
           🔒 O perfil do aluno pertence estritamente a ele. Como admin, você pode monitorar o progresso e aplicar
-          banimentos, mas <strong>não</strong> pode alterar dados cadastrais, senhas, nomes ou fotos dos estudantes.
+          banimentos, mas <strong>não</strong> pode alterar dados cadastrais, códigos de acesso, nomes ou fotos dos estudantes.
         </p>
       </Card>
     </div>

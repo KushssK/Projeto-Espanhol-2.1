@@ -78,40 +78,43 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
 };
 
 // ============================================================================
-// GET /api/users/search?q=term — Buscar usuários ou listar membros da comunidade
+// GET /api/users/search?q=term — Busca EXPLÍCITA de usuários (privacidade)
+//
+// Regras de privacidade:
+//  - NUNCA retorna a lista completa de usuários: exige uma query (mín. 2 chars);
+//  - o e-mail é usado apenas como critério de busca (username OU e-mail),
+//    mas NÃO é devolvido na resposta — ninguém vê e-mails em listas públicas;
+//  - limite de resultados (take 10) + rate limit na rota.
 // ============================================================================
 export const searchUsers = async (req: AuthRequest, res: Response) => {
   try {
     const currentUserId = req.user?.userId;
     const query = typeof req.query.q === 'string' ? req.query.q.trim() : '';
 
-    const whereClause: Record<string, any> = {
-      isBanned: false,
-    };
-
-    if (currentUserId) {
-      whereClause.id = { not: currentUserId };
-    }
-
-    if (query.length >= 2) {
-      whereClause.OR = [
-        { username: { contains: query, mode: 'insensitive' } },
-        { email: { contains: query, mode: 'insensitive' } },
-      ];
+    // Sem busca explícita → nenhum usuário é retornado (sem listagem pública).
+    if (query.length < 2) {
+      return res.status(200).json([]);
     }
 
     const users = await prisma.user.findMany({
-      where: whereClause,
+      where: {
+        isBanned: false,
+        id: { not: currentUserId },
+        OR: [
+          { username: { contains: query, mode: 'insensitive' } },
+          { email: { contains: query, mode: 'insensitive' } },
+        ],
+      },
       select: {
         id: true,
         username: true,
-        email: true,
         avatarUrl: true,
         role: true,
         createdAt: true,
+        // email deliberadamente NÃO é selecionado (privacidade)
       },
       orderBy: { createdAt: 'desc' },
-      take: 50,
+      take: 10,
     });
 
     return res.status(200).json(users);

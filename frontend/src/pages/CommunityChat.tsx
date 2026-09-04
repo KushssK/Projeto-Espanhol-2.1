@@ -77,6 +77,12 @@ export const CommunityChat: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Refs "live" usadas pelos handlers de socket (mantêm os listeners estáveis,
+  // sem precisar re-registrá-los a cada troca de conversa)
+  const activeRoomIdRef = useRef<string | null>(null);
+  const roomsRef = useRef<ChatRoom[]>([]);
+  const currentUserIdRef = useRef<string | undefined>(currentUser?.id);
+
   // Helper: nome de exibição da sala
   const getRoomDisplayName = useCallback(
     (room: ChatRoom) => {
@@ -90,8 +96,6 @@ export const CommunityChat: React.FC = () => {
   const handleSelectRoom = async (room: ChatRoom) => {
     setActiveRoom(room);
     setTypingUsers([]);
-    const socket = getSocket();
-    socket.emit('join_room', room.id);
 
     try {
       const res = await api.get(`/chat/rooms/${room.id}/messages?limit=100`);
@@ -113,7 +117,21 @@ export const CommunityChat: React.FC = () => {
     }
   }, []);
 
-  // Conectar socket + carregar salas
+  // Mantém as refs sincronizadas para os handlers de socket
+  useEffect(() => {
+    activeRoomIdRef.current = activeRoom?.id ?? null;
+  }, [activeRoom]);
+  useEffect(() => {
+    roomsRef.current = rooms;
+  }, [rooms]);
+  useEffect(() => {
+    currentUserIdRef.current = currentUser?.id;
+  }, [currentUser?.id]);
+
+  // Conectar socket + registrar os listeners UMA única vez (listeners estáveis:
+  // nenhuma mensagem se perde ao trocar de conversa). A reconexão automática do
+  // Socket.IO dispara 'connect' de novo — nesse momento re-entramos na conversa
+  // aberta (o servidor também já re-adiciona o socket a todas as salas do usuário).
   useEffect(() => {
     connectSocket();
     const socket = getSocket();
@@ -121,61 +139,82 @@ export const CommunityChat: React.FC = () => {
 
     loadRooms();
 
+    const handleConnect = () => {
+      setTypingUsers([]);
+      const roomId = activeRoomIdRef.current;
+      if (roomId) socket.emit('join_room', roomId);
+    };
+
     // Receber mensagens em tempo real (texto via socket e arquivos via REST broadcast)
-    socket.on('receive_message', (message: Message & { chatRoomId: string }) => {
-      // Só adicionar na conversa ativa se a mensagem for desta sala
-      setMessages((prev) => {
-        if (message.chatRoomId !== activeRoom?.id) return prev;
-        return prev.some((m) => m.id === message.id) ? prev : [...prev, message];
+    const handleReceiveMessage = (message: Message & { chatRoomId: string }) => {
+      const roomId = message.chatRoomId;
+
+      // Atualiza a prévia na barra lateral; se a conversa ainda não foi carregada
+      // (ex.: outro usuário acabou de iniciá-la), recarrega a lista para ela aparecer.
+      setRooms((prev) => {
+        const exists = prev.some((r) => r.id === roomId);
+        if (!exists) {
+          void loadRooms();
+          return prev;
+        }
+        return prev.map((r) => (r.id === roomId ? { ...r, lastMessage: message } : r));
       });
 
-      setRooms((prevRooms) =>
-        prevRooms.map((r) =>
-          r.id === message.chatRoomId ? { ...r, lastMessage: message } : r
-        )
-      );
-    });
+      // Só adiciona à conversa aberta no momento (deduplicação por id)
+      if (roomId === activeRoomIdRef.current) {
+        setMessages((prev) =>
+          prev.some((m) => m.id === message.id) ? prev : [...prev, message]
+        );
+      }
+    };
 
-    // Indicador de digitação (backend envia userId + roomId)
-    const handleUserTyping = ({ userId }: { userId: string; roomId: string }) => {
-      if (userId === currentUser?.id) return;
+    // Indicador de digitação — só exibe quando corresponde à conversa aberta
+    const handleUserTyping = ({ userId, roomId }: { userId: string; roomId: string }) => {
+      if (roomId !== activeRoomIdRef.current) return;
+      if (userId === currentUserIdRef.current) return;
+      const room = roomsRef.current.find((r) => r.id === roomId);
       const name =
-        activeRoom?.members.find((m) => m.userId === userId)?.user.username || 'Alguém';
+        room?.members.find((m) => m.userId === userId)?.user.username || 'Alguém';
       setTypingUsers((prev) => (prev.includes(name) ? prev : [...prev, name]));
     };
-    const handleUserStopTyping = ({ userId }: { userId: string }) => {
+    const handleUserStopTyping = ({ userId, roomId }: { userId: string; roomId: string }) => {
+      if (roomId !== activeRoomIdRef.current) return;
+      const room = roomsRef.current.find((r) => r.id === roomId);
       const name =
-        activeRoom?.members.find((m) => m.userId === userId)?.user.username || 'Alguém';
+        room?.members.find((m) => m.userId === userId)?.user.username || 'Alguém';
       setTypingUsers((prev) => prev.filter((u) => u !== name));
     };
 
+    const handleSocketError = (data: { message: string }) => {
+      console.error('[socket error]', data.message);
+    };
+
+    socket.on('connect', handleConnect);
+    socket.on('receive_message', handleReceiveMessage);
     socket.on('user_typing', handleUserTyping);
     socket.on('user_stop_typing', handleUserStopTyping);
-    socket.on('error', (data: { message: string }) => {
-      console.error('[socket error]', data.message);
-    });
+    socket.on('error', handleSocketError);
 
     return () => {
-      socket.off('receive_message');
-      socket.off('user_typing');
-      socket.off('user_stop_typing');
-      socket.off('error');
+      socket.off('connect', handleConnect);
+      socket.off('receive_message', handleReceiveMessage);
+      socket.off('user_typing', handleUserTyping);
+      socket.off('user_stop_typing', handleUserStopTyping);
+      socket.off('error', handleSocketError);
     };
-  }, [loadRooms, activeRoom, currentUser?.id]);
+  }, [loadRooms]);
 
   // Rolar para o final do chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Sair da sala anterior ao trocar (evita vazamento de mensagens entre salas)
-  const previousRoomIdRef = useRef<string | null>(null);
+  // Selecionar uma conversa: entra na sala (o backend já adiciona o socket a
+  // todas as salas do usuário na conexão — isto é só um reforço) e carrega o
+  // histórico de mensagens.
   const selectRoom = (room: ChatRoom) => {
     const socket = getSocket();
-    if (previousRoomIdRef.current && previousRoomIdRef.current !== room.id) {
-      socket.emit('leave_room', previousRoomIdRef.current);
-    }
-    previousRoomIdRef.current = room.id;
+    socket.emit('join_room', room.id);
     void handleSelectRoom(room);
   };
 

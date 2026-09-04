@@ -57,9 +57,26 @@ export const setupSocket = (server: HttpServer) => {
   // --------------------------------------------------------------------------
   // Conexão
   // --------------------------------------------------------------------------
-  io.on('connection', (socket) => {
+  io.on('connection', async (socket) => {
     const user: SocketUser = socket.data.user;
     console.log(`[Socket] Conectado: ${user.userId} (${socket.id})`);
+
+    // Entrar automaticamente em TODAS as salas das quais o usuário é membro.
+    // Assim o realtime funciona mesmo sem abrir a conversa na interface e
+    // sobrevive a reconexões: cada nova conexão recria os rooms (o socket novo
+    // não herda os rooms do socket anterior). join_room/leave_room continuam
+    // suportados como reforço.
+    try {
+      const memberships = await prisma.roomMember.findMany({
+        where: { userId: user.userId },
+        select: { chatRoomId: true },
+      });
+      for (const membership of memberships) {
+        socket.join(membership.chatRoomId);
+      }
+    } catch (error) {
+      console.error('[Socket] Erro ao entrar nas salas do usuário:', error);
+    }
 
     // Entrar em uma sala
     socket.on('join_room', async (roomId: string) => {

@@ -19,11 +19,14 @@
  * Sem USER_CLEANUP_MODE o script é um no-op: não conecta no banco e não altera nada.
  * ─────────────────────────────────────────────────────────────────────────────
  *
- * Remove APENAS registros dependentes de usuários, respeitando as foreign keys:
+ * Remove APENAS registros dependentes de usuários e e-mails extras da whitelist,
+ * respeitando as foreign keys:
  *   Message → RoomMember → ChatRoom (salas que ficam órfãs) → UserProgress → User
+ *   WhitelistEmail → TODAS as entradas são removidas, exceto os admins fixos
+ *   (KEEP_EMAILS abaixo — manter em sincronia com src/lib/email-whitelist-seed.ts)
  *
  * Preserva: Module, Category, Lesson, Attachment, MediaLibrary, AppSettings,
- * WhitelistEmail, migrations e todo conteúdo pedagógico.
+ * migrations e todo conteúdo pedagógico.
  *
  * NÃO usa: prisma migrate reset, prisma db push, DROP DATABASE ou DROP TABLE.
  */
@@ -33,6 +36,14 @@ import { PrismaPg } from '@prisma/adapter-pg';
 
 const MODE = (process.env.USER_CLEANUP_MODE || '').trim().toLowerCase();
 const CONFIRM = (process.env.USER_CLEANUP_CONFIRM || '').trim();
+
+// E-mails SEMPRE preservados na whitelist — admins fixos do seed.
+// ⚠️  Manter em sincronia com src/lib/email-whitelist-seed.ts (WHITELIST_ENTRIES).
+const KEEP_EMAILS = new Set([
+  'kaikyzen@gmail.com',
+  'espanholemrede@gmail.com',
+  'matheusfds408@gmail.com',
+]);
 
 async function main() {
   // ── Modo desativado: no-op absoluto (deploys normais) ─────────────────────
@@ -112,12 +123,25 @@ async function main() {
       const rooms = await tx.chatRoom.deleteMany({});
       const progress = await tx.userProgress.deleteMany({});
       const users = await tx.user.deleteMany({});
+
+      // Whitelist: remover TODAS as entradas, exceto os admins fixos (KEEP_EMAILS).
+      // Comparação case-insensitive; a exclusão usa o valor exato armazenado (PK).
+      const whitelistRows = await tx.whitelistEmail.findMany({ select: { email: true } });
+      const toDelete = whitelistRows
+        .filter((w) => !KEEP_EMAILS.has(w.email.trim().toLowerCase()))
+        .map((w) => w.email);
+      const whitelist =
+        toDelete.length > 0
+          ? await tx.whitelistEmail.deleteMany({ where: { email: { in: toDelete } } })
+          : { count: 0 };
+
       return {
         messages: messages.count,
         members: members.count,
         rooms: rooms.count,
         progress: progress.count,
         users: users.count,
+        whitelist: whitelist.count,
       };
     });
 
@@ -127,6 +151,7 @@ async function main() {
     console.log(`   - salas (órfãs): ${result.rooms}`);
     console.log(`   - registros de progresso: ${result.progress}`);
     console.log(`   - usuários: ${result.users}`);
+    console.log(`   - e-mails da whitelist (fora dos admins fixos): ${result.whitelist}`);
 
     // ── Verificação final ────────────────────────────────────────────────────
     const after = await countAll(prisma);
@@ -149,14 +174,21 @@ async function main() {
     console.log(`   - anexos: ${after.attachments}`);
     console.log(`   - acervo (media): ${after.media}`);
     console.log(`   - AppSettings: ${after.appSettings}`);
-    console.log(`   - WhitelistEmail (${after.whitelistCount}):`);
-    for (const w of after.whitelist) {
+    console.log(`   - WhitelistEmail restante (${after.whitelistKept.length} admins fixos):`);
+    for (const w of after.whitelistKept) {
       console.log(`       • ${w.email} -> ${w.role}`);
     }
 
-    if (userDataZero && after.modules > 0 && after.lessons > 0 && after.appSettings > 0 && after.whitelistCount > 0) {
+    if (
+      userDataZero &&
+      after.whitelistToRemove === 0 &&
+      after.modules > 0 &&
+      after.lessons > 0 &&
+      after.appSettings > 0
+    ) {
       console.log('\n✅ [user-cleanup] Limpeza concluída e verificada: User=0, UserProgress=0,');
-      console.log('   Message=0, RoomMember=0, ChatRoom órfãs=0. Conteúdo preservado.');
+      console.log('   Message=0, RoomMember=0, ChatRoom órfãs=0 e whitelist sem entradas');
+      console.log('   extras (apenas os admins fixos preservados). Conteúdo pedagógico intacto.');
       return;
     }
 
@@ -172,7 +204,7 @@ async function main() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function expectedToken(c: Awaited<ReturnType<typeof countAll>>): string {
-  return `EXECUTAR-LIMPEZA-USER-${c.users}-MSG-${c.messages}`;
+  return `EXECUTAR-LIMPEZA-USER-${c.users}-MSG-${c.messages}-WL-${c.whitelistToRemove}`;
 }
 
 async function countAll(prisma: PrismaClient) {
@@ -188,7 +220,6 @@ async function countAll(prisma: PrismaClient) {
     attachments,
     media,
     appSettings,
-    whitelistCount,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.userProgress.count(),
@@ -201,12 +232,12 @@ async function countAll(prisma: PrismaClient) {
     prisma.attachment.count(),
     prisma.mediaLibrary.count(),
     prisma.appSettings.count(),
-    prisma.whitelistEmail.count(),
   ]);
   const whitelist = await prisma.whitelistEmail.findMany({
     orderBy: { email: 'asc' },
     select: { email: true, role: true },
   });
+  const whitelistKept = whitelist.filter((w) => KEEP_EMAILS.has(w.email.trim().toLowerCase()));
   return {
     users,
     progress,
@@ -219,8 +250,9 @@ async function countAll(prisma: PrismaClient) {
     attachments,
     media,
     appSettings,
-    whitelistCount,
-    whitelist,
+    whitelistTotal: whitelist.length,
+    whitelistToRemove: whitelist.length - whitelistKept.length,
+    whitelistKept,
   };
 }
 
@@ -231,6 +263,12 @@ function printCounts(title: string, c: Awaited<ReturnType<typeof countAll>>) {
   console.log(`   - RoomMember: ${c.members}`);
   console.log(`   - Message: ${c.messages}`);
   console.log(`   - ChatRoom (órfãs): ${c.rooms}`);
+  console.log(`   - WhitelistEmail total: ${c.whitelistTotal}`);
+  console.log(`       • a remover (fora dos admins fixos): ${c.whitelistToRemove}`);
+  console.log(`       • preservar (admins fixos): ${c.whitelistKept.length}`);
+  for (const w of c.whitelistKept) {
+    console.log(`           • ${w.email} -> ${w.role}`);
+  }
 }
 
 // Garantir que erros não tratados causem exit 1 (deploy falha visivelmente)

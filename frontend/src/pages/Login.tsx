@@ -7,6 +7,7 @@ import { AlertCircle, Lock, Mail } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [accessCode, setAccessCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,14 +20,14 @@ export const Login: React.FC = () => {
     e.preventDefault();
     setError(null);
 
-    if (!email || !accessCode) {
+    if (!email || !password || !accessCode) {
       setError('Por favor, preencha todos os campos.');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await api.post('/auth/login', { email, accessCode });
+      const response = await api.post('/auth/login', { email, password, accessCode });
       const { token, user } = response.data;
       login(token, user);
       navigate('/dashboard');
@@ -70,6 +71,20 @@ export const Login: React.FC = () => {
               style={{ paddingLeft: '48px' }}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="relative">
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2" size={20} style={{ color: 'var(--text-muted)' }} />
+            <input
+              type="password"
+              placeholder="Sua senha"
+              className="input-gamified"
+              style={{ paddingLeft: '48px' }}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
               required
             />
           </div>

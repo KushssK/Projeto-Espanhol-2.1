@@ -3,11 +3,12 @@ import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useThemeStore } from '../stores/useThemeStore';
-import { AlertCircle, User, Mail, Calendar } from 'lucide-react';
+import { AlertCircle, User, Mail, Lock, Calendar } from 'lucide-react';
 
 export const Register: React.FC = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [dob, setDob] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -24,14 +25,14 @@ export const Register: React.FC = () => {
     setError(null);
     setLoading(true);
 
-    if (!username || !email || !dob) {
+    if (!username || !email || !password || !dob) {
       setError('Por favor, preencha todos os campos obrigatórios.');
       setLoading(false);
       return;
     }
 
     try {
-      const response = await api.post('/auth/register', { username, email, dob });
+      const response = await api.post('/auth/register', { username, email, password, dob });
       const { token, user, accessCode } = response.data;
       // Não faz login automático ainda: primeiro o usuário precisa guardar o código (exibido UMA única vez)
       setPendingAuth({ token, user });
@@ -70,7 +71,7 @@ export const Register: React.FC = () => {
               {generatedCode}
             </div>
             <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
-              Você fará login com seu e-mail + este código de 6 caracteres.
+              Você fará login com seu e-mail + senha + este código de 6 caracteres.
             </p>
           </div>
 
@@ -151,6 +152,21 @@ export const Register: React.FC = () => {
               style={{ paddingLeft: '48px' }}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="relative">
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2" size={20} style={{ color: 'var(--text-muted)' }} />
+            <input
+              type="password"
+              placeholder="Crie uma senha (mínimo 6 caracteres)"
+              className="input-gamified"
+              style={{ paddingLeft: '48px' }}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={6}
+              autoComplete="new-password"
               required
             />
           </div>

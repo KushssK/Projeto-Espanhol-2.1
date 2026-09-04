@@ -465,7 +465,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             </h3>
 
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              O acesso à sua conta usa <strong>e-mail + código de acesso</strong> de 6 caracteres.
+              O acesso à sua conta usa <strong>e-mail + senha + código de acesso</strong> de 6 caracteres.
               Você pode gerar um novo código a qualquer momento — o anterior é invalidado na hora.
             </p>
 

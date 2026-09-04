@@ -80,7 +80,7 @@ export const Navbar: React.FC = () => {
         {(user?.role === 'ADMIN' || user?.role === 'TEACHER') && (
           <Link to="/admin" className={`flex items-center gap-2 font-bold transition-colors ${isActive('/admin')}`} style={{ color: location.pathname === '/admin' ? themeColor : 'var(--text-muted)' }}>
             <ShieldAlert size={18} />
-            Painel
+            {user?.role === 'ADMIN' ? 'Painel Administrativo' : 'Painel'}
           </Link>
         )}
       </div>
@@ -173,7 +173,7 @@ export const Navbar: React.FC = () => {
           </Link>
           {(user?.role === 'ADMIN' || user?.role === 'TEACHER') && (
             <Link to="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 font-bold py-2 text-decoration-none" style={{ color: 'var(--text-main)' }}>
-              <ShieldAlert size={18} /> Painel Administrador
+              <ShieldAlert size={18} /> {user?.role === 'ADMIN' ? 'Painel Administrativo' : 'Painel do Professor'}
             </Link>
           )}
           <hr className="border-[var(--border-color)]" />

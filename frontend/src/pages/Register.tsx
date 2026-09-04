@@ -99,7 +99,13 @@ export const Register: React.FC = () => {
               disabled={!pendingAuth}
               style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
             >
-              Entrar no painel →
+              {/* Texto contextual por papel: estudante entra na área de estudos;
+                  professor/administrador entram no painel de gestão */}
+              {pendingAuth?.user?.role === 'STUDENT'
+                ? 'Acessar meus estudos →'
+                : pendingAuth?.user?.role === 'ADMIN'
+                ? 'Acessar painel administrativo →'
+                : 'Acessar painel →'}
             </button>
           </div>
         </div>

@@ -21,16 +21,18 @@ enum Role {
 }
 
 model User {
-  id             String    @id @default(uuid())
-  email          String    @unique
-  username       String?   @unique
-  passwordHash   String
-  dob            DateTime  // Data de nascimento
-  role           Role      @default(STUDENT)
-  avatarUrl      String?
-  isBanned       Boolean   @default(false)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  username            String?   @unique
+  accessCodeHash      String?   // Hash do código de acesso (6 caracteres) usado no login
+  dob                 DateTime  // Data de nascimento
+  role                Role      @default(STUDENT)
+  avatarUrl           String?
+  isBanned            Boolean   @default(false)
+  failedLoginAttempts Int       @default(0) // Tentativas de login falhas (anti brute force)
+  lockoutUntil        DateTime? // Bloqueio temporário após tentativas em excesso
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   // Relacionamentos
   progress            UserProgress[]

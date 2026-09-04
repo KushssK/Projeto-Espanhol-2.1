@@ -12,10 +12,10 @@ const emailSchema = z
     message: 'E-mail inválido.',
   });
 
-const passwordSchema = z
+// Código de acesso: exatamente 6 caracteres alfanuméricos
+const accessCodeSchema = z
   .string()
-  .min(6, 'A senha deve ter pelo menos 6 caracteres.')
-  .max(100, 'A senha deve ter no máximo 100 caracteres.');
+  .regex(/^[A-Za-z0-9]{6}$/, 'O código de acesso deve ter exatamente 6 caracteres alfanuméricos.');
 
 // Data de nascimento: deve existir, ser no passado e o usuário ter 13+ anos
 const dobSchema = z
@@ -43,25 +43,15 @@ const usernameSchema = z
 
 export const registerSchema = z.object({
   email: emailSchema,
-  password: passwordSchema,
   dob: dobSchema,
   username: usernameSchema,
 });
 
 export const loginSchema = z.object({
   email: emailSchema,
-  password: z.string().min(1, 'Senha é obrigatória.'),
-});
-
-export const bootstrapAdminSchema = z.object({
-  secret: z.string().min(1, 'Chave de bootstrap é obrigatória.'),
-  email: emailSchema,
-  password: passwordSchema,
-  dob: dobSchema,
-  username: usernameSchema,
+  accessCode: accessCodeSchema,
 });
 
 // Tipos inferidos
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
-export type BootstrapAdminInput = z.infer<typeof bootstrapAdminSchema>;

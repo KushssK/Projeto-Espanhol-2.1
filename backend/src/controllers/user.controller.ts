@@ -1,5 +1,4 @@
 import { Response } from 'express';
-import bcrypt from 'bcrypt';
 import { prisma } from '../lib/prisma';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { Role } from '../generated/prisma/enums';
@@ -118,48 +117,6 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
     return res.status(200).json(users);
   } catch (error) {
     console.error('Erro ao buscar usuários:', error);
-    return res.status(500).json({ error: 'Erro interno no servidor' });
-  }
-};
-
-// ============================================================================
-// PUT /api/users/me/password — Alterar própria senha
-// ============================================================================
-export const changeMyPassword = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user!.userId;
-    const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Senha atual e nova senha são obrigatórias.' });
-    }
-
-    if (typeof newPassword !== 'string' || newPassword.length < 6) {
-      return res.status(400).json({ error: 'A nova senha deve ter pelo menos 6 caracteres.' });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'Usuário não encontrado.' });
-    }
-
-    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!isMatch) {
-      return res.status(400).json({ error: 'Senha atual incorreta.' });
-    }
-
-    const newHash = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash: newHash },
-    });
-
-    return res.status(200).json({ message: 'Senha atualizada com sucesso!' });
-  } catch (error) {
-    console.error('Erro ao alterar senha:', error);
     return res.status(500).json({ error: 'Erro interno no servidor' });
   }
 };

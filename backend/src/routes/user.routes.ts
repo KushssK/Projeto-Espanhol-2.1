@@ -2,7 +2,6 @@ import { Router } from 'express';
 import {
   getMyProfile,
   updateMyProfile,
-  changeMyPassword,
   searchUsers,
   banUser,
   unbanUser,
@@ -18,7 +17,6 @@ const router = Router();
 // Rotas autenticadas (qualquer role)
 router.get('/me', authenticateToken, getMyProfile);
 router.put('/me', authenticateToken, uploadAvatar.single('avatar'), updateMyProfile);
-router.put('/me/password', authenticateToken, changeMyPassword);
 router.get('/search', authenticateToken, searchUsers);
 
 // Rotas Admin

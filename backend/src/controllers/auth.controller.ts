@@ -3,7 +3,17 @@ import bcrypt from 'bcrypt';
 import { prisma } from '../lib/prisma';
 import { signToken } from '../lib/token';
 import { publicUser } from '../lib/user';
-import { registerSchema, loginSchema, bootstrapAdminSchema } from '../validators/auth.validators';
+import { generateAccessCode } from '../lib/access-code';
+import { AuthRequest } from '../middlewares/auth.middleware';
+import { registerSchema, loginSchema } from '../validators/auth.validators';
+
+// ============================================================================
+// Constantes de segurança (anti brute force)
+// ============================================================================
+
+const HASH_ROUNDS = 10;
+const MAX_LOGIN_ATTEMPTS = 5; // limite de tentativas por conta
+const LOCKOUT_MS = 15 * 60 * 1000; // bloqueio de 15 minutos após excesso de tentativas
 
 // ============================================================================
 // Função auxiliar: normalizar e-mail
@@ -14,46 +24,7 @@ function normalizeEmail(email: string): string {
 }
 
 // ============================================================================
-// Função auxiliar: criar conta de usuário
-// ============================================================================
-
-async function createUserAccount(params: {
-  email: string;
-  password: string;
-  dob: string;
-  username?: string;
-  role: 'STUDENT' | 'TEACHER' | 'ADMIN';
-}) {
-  const existingUser = await prisma.user.findFirst({
-    where: {
-      OR: [
-        { email: params.email },
-        { username: params.username || undefined },
-      ],
-    },
-  });
-
-  if (existingUser) {
-    return { error: 'Usuário já existe com este e-mail ou username.', status: 400 };
-  }
-
-  const hashedPassword = await bcrypt.hash(params.password, 10);
-
-  const newUser = await prisma.user.create({
-    data: {
-      email: params.email,
-      passwordHash: hashedPassword,
-      dob: new Date(params.dob),
-      username: params.username,
-      role: params.role,
-    },
-  });
-
-  return { newUser };
-}
-
-// ============================================================================
-// CADASTRO — com whitelist de e-mails
+// CADASTRO — cria a conta e gera um código de acesso exibido UMA única vez
 // ============================================================================
 
 export const register = async (req: Request, res: Response) => {
@@ -63,35 +34,50 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Dados de cadastro inválidos.' });
     }
 
-    const { email, password, dob, username } = parsed.data;
+    const { email, dob, username } = parsed.data;
     const normalizedEmail = normalizeEmail(email);
 
-    // Consultar whitelist de e-mails para determinar a role
+    // Consultar whitelist de e-mails para determinar a role (ADMIN/TEACHER/STUDENT)
     const whitelistEntry = await prisma.whitelistEmail.findUnique({
       where: { email: normalizedEmail },
     });
-
     const role = whitelistEntry ? whitelistEntry.role : 'STUDENT';
 
-    const result = await createUserAccount({
-      email: normalizedEmail,
-      password,
-      dob,
-      username,
-      role,
+    // Código de acesso: gerado de forma criptograficamente segura (crypto.randomInt).
+    // Armazenado SOMENTE como hash — nunca em texto puro no banco.
+    const accessCode = generateAccessCode();
+    const accessCodeHash = await bcrypt.hash(accessCode, HASH_ROUNDS);
+
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: normalizedEmail },
+          { username: username || undefined },
+        ],
+      },
     });
 
-    if ('error' in result) {
-      return res.status(result.status ?? 400).json({ error: result.error });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Usuário já existe com este e-mail ou username.' });
     }
 
-    const { newUser } = result;
+    const newUser = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        accessCodeHash,
+        dob: new Date(dob),
+        username,
+        role,
+      },
+    });
 
-    // Login automático — token direto, sem verificação por e-mail
+    // O código é devolvido UMA única vez nesta resposta, para o usuário guardar.
+    // Nunca é registrado em logs e o hash nunca é exposto pela API.
     return res.status(201).json({
-      message: 'Conta criada com sucesso!',
+      message: 'Conta criada com sucesso! Guarde o seu código de acesso.',
       token: signToken(newUser.id, newUser.role),
       user: publicUser(newUser),
+      accessCode,
     });
   } catch (error) {
     console.error('Erro no registro:', error);
@@ -100,92 +86,75 @@ export const register = async (req: Request, res: Response) => {
 };
 
 // ============================================================================
-// BOOTSTRAP ADMIN — cria primeiro admin com secret
-// ============================================================================
-
-export const bootstrapAdmin = async (req: Request, res: Response) => {
-  try {
-    const bootstrapSecret = process.env.BOOTSTRAP_SECRET;
-    if (!bootstrapSecret) {
-      return res.status(503).json({ error: 'Endpoint desabilitado. Configure BOOTSTRAP_SECRET no servidor.' });
-    }
-
-    const parsed = bootstrapAdminSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Dados inválidos.' });
-    }
-
-    const { secret, email, password, dob, username } = parsed.data;
-
-    if (secret !== bootstrapSecret) {
-      return res.status(403).json({ error: 'Chave de bootstrap inválida.' });
-    }
-
-    const existingAdmin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
-    if (existingAdmin) {
-      return res.status(403).json({
-        error: 'Já existe um administrador no sistema. Faça login normalmente em /login.',
-      });
-    }
-
-    const result = await createUserAccount({
-      email: normalizeEmail(email),
-      password,
-      dob,
-      username,
-      role: 'ADMIN',
-    });
-
-    if ('error' in result) {
-      return res.status(result.status ?? 400).json({ error: result.error });
-    }
-
-    const { newUser } = result;
-
-    return res.status(201).json({
-      message: 'Admin criado com sucesso!',
-      token: signToken(newUser.id, newUser.role),
-      user: publicUser(newUser),
-    });
-  } catch (error) {
-    console.error('Erro no bootstrap admin:', error);
-    return res.status(500).json({ error: 'Erro interno no servidor' });
-  }
-};
-
-// ============================================================================
-// LOGIN — direto com e-mail e senha (sem 2FA)
+// LOGIN — e-mail + código de acesso de 6 caracteres (com anti brute force)
 // ============================================================================
 
 export const login = async (req: Request, res: Response) => {
   try {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.issues[0]?.message || 'E-mail e senha são obrigatórios.' });
+      return res.status(400).json({ error: parsed.error.issues[0]?.message || 'E-mail e código de acesso são obrigatórios.' });
     }
 
-    const { email, password } = parsed.data;
+    const { email, accessCode } = parsed.data;
     const normalizedEmail = normalizeEmail(email);
 
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
 
+    // Mensagem genérica — não revela se o e-mail existe (anti enumeração)
     if (!user) {
-      return res.status(401).json({ error: 'Credenciais inválidas.' });
+      return res.status(401).json({ error: 'E-mail ou código de acesso inválidos.' });
     }
 
     if (user.isBanned) {
       return res.status(403).json({ error: 'Conta banida.' });
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-
-    if (!passwordMatch) {
-      return res.status(401).json({ error: 'Credenciais inválidas.' });
+    // Bloqueio temporário após tentativas em excesso
+    if (user.lockoutUntil && user.lockoutUntil.getTime() > Date.now()) {
+      const minutes = Math.ceil((user.lockoutUntil.getTime() - Date.now()) / 60_000);
+      return res.status(429).json({
+        error: `Muitas tentativas. Tente novamente em ${minutes} minuto(s).`,
+      });
     }
 
-    // Login direto — sem código de verificação
+    // Comparação segura: bcrypt.compare é de tempo aproximadamente constante
+    const codeMatches = user.accessCodeHash
+      ? await bcrypt.compare(accessCode, user.accessCodeHash)
+      : false;
+
+    if (!codeMatches) {
+      const failedAttempts = user.failedLoginAttempts + 1;
+
+      if (failedAttempts >= MAX_LOGIN_ATTEMPTS) {
+        // Acima do limite: zera o contador e bloqueia a conta por 15 minutos
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            failedLoginAttempts: 0,
+            lockoutUntil: new Date(Date.now() + LOCKOUT_MS),
+          },
+        });
+        return res.status(429).json({
+          error: 'Muitas tentativas. Tente novamente em 15 minutos.',
+        });
+      }
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts: failedAttempts },
+      });
+      return res.status(401).json({ error: 'E-mail ou código de acesso inválidos.' });
+    }
+
+    // Sucesso: reseta tentativas e libera qualquer bloqueio
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { failedLoginAttempts: 0, lockoutUntil: null },
+    });
+
     return res.status(200).json({
       message: 'Login realizado com sucesso!',
       token: signToken(user.id, user.role),
@@ -193,6 +162,42 @@ export const login = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Erro no login:', error);
+    return res.status(500).json({ error: 'Erro interno no servidor' });
+  }
+};
+
+// ============================================================================
+// GERAR NOVO CÓDIGO DE ACESSO — invalida o anterior e exibe o novo UMA vez
+// ============================================================================
+
+export const regenerateAccessCode = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Não autenticado.' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado.' });
+    }
+
+    // Gera novo código e sobrescreve o hash — o anterior é invalidado imediatamente.
+    const accessCode = generateAccessCode();
+    const accessCodeHash = await bcrypt.hash(accessCode, HASH_ROUNDS);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { accessCodeHash, failedLoginAttempts: 0, lockoutUntil: null },
+    });
+
+    // Exibido UMA única vez; apenas o hash fica armazenado.
+    return res.status(200).json({
+      message: 'Novo código gerado! O código anterior foi invalidado. Guarde este novo código.',
+      accessCode,
+    });
+  } catch (error) {
+    console.error('Erro ao gerar novo código de acesso:', error);
     return res.status(500).json({ error: 'Erro interno no servidor' });
   }
 };

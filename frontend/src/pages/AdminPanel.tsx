@@ -33,6 +33,7 @@ interface LessonItem {
 
 interface MediaItem {
   id: string;
+  moduleId: string | null;
   title: string;
   type: 'PDF' | 'AUDIO' | 'IMAGE';
   url: string | null;
@@ -836,8 +837,9 @@ const ModuleCard: React.FC<{
 
 const MediaTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
   const [items, setItems] = useState<MediaItem[]>([]);
+  const [modules, setModules] = useState<ModuleItem[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', type: 'PDF', videoUrl: '' });
+  const [form, setForm] = useState({ title: '', description: '', type: 'PDF', videoUrl: '', moduleId: '' });
   const fileRef = React.useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -852,7 +854,16 @@ const MediaTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
 
   useEffect(() => {
     load();
+    api
+      .get('/modules')
+      .then((r) => setModules(r.data))
+      .catch(() => undefined);
   }, [load]);
+
+  // Com o acervo vazio, o formulário já abre — fica claro como adicionar conteúdo
+  useEffect(() => {
+    if (items.length === 0) setShowForm(true);
+  }, [items.length]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -860,13 +871,16 @@ const MediaTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
       const formData = new FormData();
       formData.append('title', form.title);
       formData.append('description', form.description || '');
-      formData.append('type', form.type);
+      // O enum do banco não tem VIDEO — vídeos são identificados pelo videoUrl
+      // (o frontend público já exibe o badge/filtro VÍDEO a partir do videoUrl)
+      formData.append('type', form.type === 'VIDEO' ? 'PDF' : form.type);
+      if (form.moduleId) formData.append('moduleId', form.moduleId);
       if (form.videoUrl) formData.append('videoUrl', form.videoUrl);
       if (selectedFile) formData.append('file', selectedFile);
 
       await api.post('/media-library', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setShowForm(false);
-      setForm({ title: '', description: '', type: 'PDF', videoUrl: '' });
+      setForm({ title: '', description: '', type: 'PDF', videoUrl: '', moduleId: '' });
       setSelectedFile(null);
       if (fileRef.current) fileRef.current.value = '';
       await load();
@@ -910,26 +924,75 @@ const MediaTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
         <Card title="Novo item no Acervo">
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <Input placeholder="Título" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} required />
-            <Input placeholder="Descrição (opcional)" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
-            <Select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}>
-              <option value="PDF">PDF</option>
-              <option value="AUDIO">Áudio</option>
-              <option value="IMAGE">Imagem</option>
-            </Select>
-            <Input placeholder="URL de vídeo externo (YouTube/Vimeo) — opcional" value={form.videoUrl} onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))} />
-            <div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="application/pdf,audio/*,image/*"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                className="block w-full text-sm"
-                style={{ color: 'var(--text-muted)' }}
-              />
-              <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>
-                Envie um arquivo (até 20MB) ou informe uma URL de vídeo externa.
-              </p>
+            <TextArea placeholder="Descrição (opcional)" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+
+            {/* Tipo de conteúdo: PDF, áudio, imagem ou vídeo por URL */}
+            <div className="flex flex-wrap gap-2">
+              {(['PDF', 'AUDIO', 'IMAGE', 'VIDEO'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, type: t }))}
+                  className="px-3 py-2 rounded-xl text-xs font-black border-2 cursor-pointer transition-all"
+                  style={
+                    form.type === t
+                      ? { borderColor: themeColor, color: themeColor, backgroundColor: 'var(--primary-light)' }
+                      : { borderColor: 'var(--border-color)', color: 'var(--text-muted)', background: 'transparent' }
+                  }
+                >
+                  {t === 'PDF' ? '📄 PDF' : t === 'AUDIO' ? '🎧 Áudio' : t === 'IMAGE' ? '🖼️ Imagem' : '🎬 Vídeo (URL)'}
+                </button>
+              ))}
             </div>
+
+            <Select value={form.moduleId} onChange={(e) => setForm((f) => ({ ...f, moduleId: e.target.value }))}>
+              <option value="">Módulo relacionado — geral (opcional)</option>
+              {modules.map((m) => (
+                <option key={m.id} value={m.id}>{m.title}</option>
+              ))}
+            </Select>
+
+            {form.type === 'VIDEO' ? (
+              <div>
+                <Input
+                  placeholder="URL do vídeo (YouTube/Vimeo) — obrigatória"
+                  value={form.videoUrl}
+                  onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
+                  required
+                />
+                <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Cole o link do YouTube ou Vimeo. Nenhum arquivo é enviado — o player é montado pelo link.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept={form.type === 'PDF' ? 'application/pdf' : form.type === 'AUDIO' ? 'audio/*' : 'image/*'}
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  className="block w-full text-sm"
+                  style={{ color: 'var(--text-muted)' }}
+                  required={!form.videoUrl}
+                />
+                <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                  {form.type === 'PDF'
+                    ? 'Envie um arquivo PDF (até 20MB).'
+                    : form.type === 'AUDIO'
+                    ? 'Envie um arquivo de áudio (MP3, WAV, OGG — até 20MB).'
+                    : 'Envie uma imagem (JPG, PNG, WEBP, GIF — até 20MB).'}
+                  {' '}Ou informe uma URL de vídeo externa no campo abaixo.
+                </p>
+                <div className="mt-2">
+                  <Input
+                    placeholder="URL de vídeo externo (YouTube/Vimeo) — opcional"
+                    value={form.videoUrl}
+                    onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button type="submit" className="btn-3d text-sm font-bold flex-1" style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
                 <Save size={16} /> Salvar Item

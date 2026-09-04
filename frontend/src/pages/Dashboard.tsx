@@ -131,7 +131,11 @@ export const Dashboard: React.FC = () => {
             </p>
           </div>
           <div className="flex items-center justify-center shrink-0">
-            <Mascot size={104} title="Mascote do Espanhol em Rede" />
+            <Mascot
+              size={104}
+              title="Falar com o tutor de espanhol"
+              onClick={() => window.dispatchEvent(new Event('open-spanish-tutor'))}
+            />
           </div>
           <div className="flex items-center gap-4 bg-[var(--bg-color)] px-5 py-3 rounded-2xl border border-[var(--border-color)]">
             <div className="text-center">

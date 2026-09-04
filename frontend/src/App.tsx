@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Navbar } from './components/Navbar'
 import { PublicNavbar } from './components/PublicNavbar'
+import { SpanishTutor } from './components/SpanishTutor'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { PublicOnlyRoute } from './components/PublicOnlyRoute'
 import { useAuthStore } from './stores/useAuthStore'
@@ -98,6 +99,9 @@ function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+
+      {/* Tutor de Espanhol — apenas para usuários autenticados (área do aluno) */}
+      {user && <SpanishTutor />}
     </div>
   )
 }

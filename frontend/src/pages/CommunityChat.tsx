@@ -40,7 +40,7 @@ interface ChatRoom {
 interface SearchUser {
   id: string;
   username: string | null;
-  email: string;
+  email?: string; // nunca chega do backend — e-mails não são expostos em buscas públicas
   avatarUrl: string | null;
   role?: string;
   createdAt?: string;
@@ -58,17 +58,17 @@ export const CommunityChat: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loadingRooms, setLoadingRooms] = useState(true);
 
-  // Abas da barra lateral: Conversas vs Membros da Comunidade
+  // Abas da barra lateral: Conversas vs Busca de Pessoas
   const [sidebarTab, setSidebarTab] = useState<'chats' | 'members'>('chats');
-  const [communityMembers, setCommunityMembers] = useState<SearchUser[]>([]);
-  const [loadingMembers, setLoadingMembers] = useState(false);
-  const [memberSearchTerm, setMemberSearchTerm] = useState('');
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [userResults, setUserResults] = useState<SearchUser[]>([]);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const [userSearchDone, setUserSearchDone] = useState(false);
 
   // Modal de criação
   const [roomMode, setRoomMode] = useState<'private' | 'group'>('private');
   const [newRoomName, setNewRoomName] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<SearchUser | null>(null);
   const [groupMembers, setGroupMembers] = useState<SearchUser[]>([]);
   const [creating, setCreating] = useState(false);
@@ -76,6 +76,7 @@ export const CommunityChat: React.FC = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Refs "live" usadas pelos handlers de socket (mantêm os listeners estáveis,
   // sem precisar re-registrá-los a cada troca de conversa)
@@ -225,43 +226,59 @@ export const CommunityChat: React.FC = () => {
     }
   }, [activeRoom, rooms, loadingRooms]);
 
-  // Carregar todos os membros da comunidade
-  const loadCommunityMembers = useCallback(async (q = '') => {
-    setLoadingMembers(true);
-    try {
-      const url = q.trim().length >= 2
-        ? `/users/search?q=${encodeURIComponent(q.trim())}`
-        : '/users/search';
-      const res = await api.get(url);
-      const filtered = res.data.filter((u: SearchUser) => u.id !== currentUser?.id);
-      setCommunityMembers(filtered);
-      return filtered;
-    } catch (err) {
-      console.error('Erro ao buscar membros da comunidade:', err);
-      return [];
-    } finally {
-      setLoadingMembers(false);
-    }
-  }, [currentUser?.id]);
-
-  useEffect(() => {
-    loadCommunityMembers();
-  }, [loadCommunityMembers]);
-
-  // Ao abrir o modal de nova conversa, pré-carregar os membros
-  useEffect(() => {
-    if (showCreateModal) {
-      if (communityMembers.length === 0) {
-        loadCommunityMembers().then((users) => {
-          if (users) {
-            setSearchResults(users.filter((u: SearchUser) => u.id !== selectedTarget?.id && !groupMembers.some((m) => m.id === u.id)));
-          }
-        });
-      } else {
-        setSearchResults(communityMembers.filter((u: SearchUser) => u.id !== selectedTarget?.id && !groupMembers.some((m) => m.id === u.id)));
+  // Busca EXPLÍCITA de usuários — a comunidade NUNCA é listada automaticamente.
+  // O backend exige query (mín. 2 caracteres) e não devolve e-mails.
+  const runUserSearch = useCallback(
+    async (q: string) => {
+      const term = q.trim();
+      if (term.length < 2) {
+        setUserResults([]);
+        setUserSearchDone(false);
+        return;
       }
-    }
-  }, [showCreateModal, communityMembers, selectedTarget, groupMembers, loadCommunityMembers]);
+      setSearchingUsers(true);
+      try {
+        const res = await api.get(`/users/search?q=${encodeURIComponent(term)}`);
+        setUserResults((res.data || []).filter((u: SearchUser) => u.id !== currentUser?.id));
+        setUserSearchDone(true);
+      } catch (err) {
+        console.error('Erro ao buscar usuários:', err);
+        setUserResults([]);
+      } finally {
+        setSearchingUsers(false);
+      }
+    },
+    [currentUser?.id]
+  );
+
+  // Busca com debounce (350ms), usada pela aba Membros e pelo modal
+  const handleUserSearchChange = (val: string) => {
+    setUserSearchTerm(val);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      void runUserSearch(val);
+    }, 350);
+  };
+
+  const handleModalSearchChange = (val: string) => {
+    setSearchTerm(val);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      void runUserSearch(val);
+    }, 350);
+  };
+
+  // Limpar o debounce ao desmontar
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, []);
+
+  // Resultados exibidos no modal: exclui pessoas já selecionadas (1:1 ou grupo)
+  const modalResults = userResults.filter(
+    (u) => u.id !== selectedTarget?.id && !groupMembers.some((m) => m.id === u.id)
+  );
 
   // Iniciar conversa direta 1:1 imediatamente (pelo sidebar ou modal)
   const handleStartDirectChat = async (targetUser: SearchUser) => {
@@ -283,31 +300,6 @@ export const CommunityChat: React.FC = () => {
       setSidebarTab('chats');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Erro ao iniciar conversa.');
-    }
-  };
-
-  // Filtragem e busca em tempo real no modal
-  const handleModalSearchChange = (val: string) => {
-    setSearchTerm(val);
-    if (!val.trim()) {
-      setSearchResults(
-        communityMembers.filter(
-          (u) =>
-            u.id !== selectedTarget?.id &&
-            !groupMembers.some((m) => m.id === u.id)
-        )
-      );
-    } else {
-      const lower = val.toLowerCase();
-      setSearchResults(
-        communityMembers.filter(
-          (u) =>
-            u.id !== selectedTarget?.id &&
-            !groupMembers.some((m) => m.id === u.id) &&
-            ((u.username && u.username.toLowerCase().includes(lower)) ||
-             (u.email && u.email.toLowerCase().includes(lower)))
-        )
-      );
     }
   };
 
@@ -343,7 +335,6 @@ export const CommunityChat: React.FC = () => {
     setRoomMode('private');
     setNewRoomName('');
     setSearchTerm('');
-    setSearchResults(communityMembers);
     setSelectedTarget(null);
     setGroupMembers([]);
   };
@@ -439,10 +430,7 @@ export const CommunityChat: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => {
-                setSidebarTab('members');
-                if (communityMembers.length === 0) loadCommunityMembers();
-              }}
+              onClick={() => setSidebarTab('members')}
               className="flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all border-none cursor-pointer flex items-center justify-center gap-1.5"
               style={{
                 backgroundColor: sidebarTab === 'members' ? 'var(--bg-color)' : 'transparent',
@@ -451,7 +439,7 @@ export const CommunityChat: React.FC = () => {
               }}
             >
               <Users size={14} />
-              Membros {communityMembers.length > 0 && `(${communityMembers.length})`}
+              Buscar Pessoas
             </button>
           </div>
         </div>
@@ -475,7 +463,7 @@ export const CommunityChat: React.FC = () => {
                   className="btn-3d text-xs font-bold py-2 px-4"
                   style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}
                 >
-                  <Users size={14} /> Ver Membros da Comunidade
+                  <Users size={14} /> Buscar Pessoas na Comunidade
                 </button>
               </div>
             )}
@@ -510,92 +498,92 @@ export const CommunityChat: React.FC = () => {
           </div>
         )}
 
-        {/* Conteúdo da Aba: MEMBROS DA COMUNIDADE */}
+        {/* Conteúdo da Aba: BUSCAR PESSOAS — busca explícita, sem listagem pública */}
         {sidebarTab === 'members' && (
           <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-            {/* Campo de filtro rápido */}
+            <p className="text-[10px] font-black uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              Encontre alguém pelo @username ou e-mail
+            </p>
             <div className="relative mb-1">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2" size={14} style={{ color: 'var(--text-muted)' }} />
               <input
                 type="text"
-                placeholder="Filtrar estudante ou professor..."
+                placeholder="Buscar por @username ou e-mail..."
                 className="input-gamified w-full text-xs py-1.5 pl-8 pr-2"
-                value={memberSearchTerm}
-                onChange={(e) => setMemberSearchTerm(e.target.value)}
+                value={userSearchTerm}
+                onChange={(e) => handleUserSearchChange(e.target.value)}
               />
             </div>
 
-            {loadingMembers && (
+            {searchingUsers && (
               <p className="text-center text-xs py-6" style={{ color: 'var(--text-muted)' }}>
-                Carregando membros da comunidade...
+                Buscando...
               </p>
             )}
 
-            {!loadingMembers && communityMembers.length === 0 && (
+            {!searchingUsers && userSearchTerm.trim().length >= 2 && userSearchDone && userResults.length === 0 && (
               <p className="text-center text-xs py-6" style={{ color: 'var(--text-muted)' }}>
-                Nenhum membro encontrado.
+                Nenhum usuário encontrado com este termo.
               </p>
             )}
 
-            {communityMembers
-              .filter((u) => {
-                if (!memberSearchTerm.trim()) return true;
-                const lower = memberSearchTerm.toLowerCase();
-                return (
-                  (u.username && u.username.toLowerCase().includes(lower)) ||
-                  (u.email && u.email.toLowerCase().includes(lower))
-                );
-              })
-              .map((member) => (
-                <div
-                  key={member.id}
-                  className="p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--panel-bg)] flex items-center justify-between gap-2 hover:border-[var(--primary-color)] transition-all"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    {member.avatarUrl ? (
-                      <img
-                        src={assetUrl(member.avatarUrl)}
-                        alt=""
-                        className="w-9 h-9 rounded-full object-cover shrink-0 border border-[var(--border-color)]"
-                      />
-                    ) : (
-                      <div className="w-9 h-9 rounded-full bg-[var(--border-color)] flex items-center justify-center shrink-0">
-                        <UserIcon size={16} />
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-xs font-extrabold truncate" style={{ color: 'var(--text-main)' }}>
-                          {member.username || 'Sem username'}
-                        </p>
-                        {member.role === 'ADMIN' && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-red-500/10 text-red-500">
-                            Admin
-                          </span>
-                        )}
-                        {member.role === 'TEACHER' && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-500/10 text-amber-500">
-                            Prof
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[10px] truncate" style={{ color: 'var(--text-muted)' }}>
-                        {member.email}
-                      </p>
+            {!searchingUsers && userSearchTerm.trim().length < 2 && (
+              <div className="text-center py-8 px-4 flex flex-col items-center gap-3">
+                <Users size={28} style={{ color: 'var(--text-muted)' }} />
+                <p className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
+                  Digite ao menos 2 caracteres para buscar alguém da comunidade.
+                </p>
+              </div>
+            )}
+
+            {userResults.map((member) => (
+              <div
+                key={member.id}
+                className="p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--panel-bg)] flex items-center justify-between gap-2 hover:border-[var(--primary-color)] transition-all"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {member.avatarUrl ? (
+                    <img
+                      src={assetUrl(member.avatarUrl)}
+                      alt=""
+                      className="w-9 h-9 rounded-full object-cover shrink-0 border border-[var(--border-color)]"
+                    />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-[var(--border-color)] flex items-center justify-center shrink-0">
+                      <UserIcon size={16} />
                     </div>
+                  )}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-extrabold truncate" style={{ color: 'var(--text-main)' }}>
+                        @{member.username || 'usuario'}
+                      </p>
+                      {member.role === 'ADMIN' && (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-red-500/10 text-red-500">
+                          Admin
+                        </span>
+                      )}
+                      {member.role === 'TEACHER' && (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-500/10 text-amber-500">
+                          Prof
+                        </span>
+                      )}
+                    </div>
+                    {/* E-mail NUNCA é exibido em listas públicas */}
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleStartDirectChat(member)}
-                    className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--primary-light)] transition-colors cursor-pointer shrink-0"
-                    style={{ background: 'transparent', color: themeColor }}
-                    title={`Conversar com ${member.username || member.email}`}
-                  >
-                    <Send size={13} />
-                  </button>
                 </div>
-              ))}
+
+                <button
+                  type="button"
+                  onClick={() => handleStartDirectChat(member)}
+                  className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--primary-light)] transition-colors cursor-pointer shrink-0"
+                  style={{ background: 'transparent', color: themeColor }}
+                  title={`Conversar com @${member.username || 'usuario'}`}
+                >
+                  <Send size={13} />
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -737,7 +725,7 @@ export const CommunityChat: React.FC = () => {
             <div className="flex items-center justify-between">
               <h3 className="font-extrabold text-lg">Nova Conversa</h3>
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => { setShowCreateModal(false); resetCreateForm(); }}
                 className="h-8 w-8 rounded-lg flex items-center justify-center cursor-pointer border border-[var(--border-color)] bg-transparent"
                 style={{ color: 'var(--text-muted)' }}
               >
@@ -776,19 +764,19 @@ export const CommunityChat: React.FC = () => {
                 />
               )}
 
-              {/* Busca de usuário */}
+              {/* Busca de pessoa — NUNCA lista a comunidade inteira */}
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
                   {roomMode === 'private'
-                    ? 'SELECIONE OU BUSQUE UM MEMBRO DA COMUNIDADE'
-                    : 'ADICIONAR MEMBROS (OPCIONAL)'}
+                    ? 'BUSCAR PESSOA'
+                    : 'ADICIONAR PESSOAS — BUSQUE E SELECIONE'}
                 </label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
                     <input
                       type="text"
-                      placeholder="Filtrar por username ou email..."
+                      placeholder="Digite @username ou e-mail (mín. 2 caracteres)..."
                       className="input-gamified w-full"
                       style={{ paddingLeft: '36px' }}
                       value={searchTerm}
@@ -797,20 +785,33 @@ export const CommunityChat: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Lista de membros com scroll */}
+                {/* Resultados da busca */}
                 <div className="mt-1">
                   <span className="text-[10px] font-black uppercase tracking-wider block mb-1" style={{ color: 'var(--text-muted)' }}>
-                    Membros disponíveis ({searchResults.length})
+                    Resultados ({modalResults.length})
                   </span>
-                  {searchResults.length === 0 ? (
+                  {searchingUsers && (
+                    <div className="p-4 text-center border border-[var(--border-color)] rounded-xl bg-[var(--panel-bg)]">
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Buscando...</p>
+                    </div>
+                  )}
+                  {!searchingUsers && searchTerm.trim().length < 2 && (
                     <div className="p-4 text-center border border-[var(--border-color)] rounded-xl bg-[var(--panel-bg)]">
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        Nenhum membro encontrado com este filtro.
+                        Digite ao menos 2 caracteres para buscar alguém.
                       </p>
                     </div>
-                  ) : (
+                  )}
+                  {!searchingUsers && searchTerm.trim().length >= 2 && modalResults.length === 0 && (
+                    <div className="p-4 text-center border border-[var(--border-color)] rounded-xl bg-[var(--panel-bg)]">
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        Nenhum usuário encontrado com este termo.
+                      </p>
+                    </div>
+                  )}
+                  {modalResults.length > 0 && (
                     <div className="border border-[var(--border-color)] rounded-xl overflow-hidden bg-[var(--panel-bg)] max-h-[220px] overflow-y-auto">
-                      {searchResults.map((u) => (
+                      {modalResults.map((u) => (
                         <button
                           key={u.id}
                           type="button"
@@ -818,6 +819,7 @@ export const CommunityChat: React.FC = () => {
                             if (roomMode === 'private') setSelectedTarget(u);
                             else setGroupMembers((prev) => [...prev, u]);
                             setSearchTerm('');
+                            setUserResults([]);
                           }}
                           className="w-full flex items-center justify-between px-3 py-2.5 text-left border-b border-[var(--border-color)] last:border-b-0 hover:bg-[var(--bg-color)] cursor-pointer"
                           style={{ background: 'none' }}
@@ -833,7 +835,7 @@ export const CommunityChat: React.FC = () => {
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
                                 <p className="text-sm font-extrabold truncate" style={{ color: 'var(--text-main)' }}>
-                                  {u.username || 'Sem username'}
+                                  @{u.username || 'usuario'}
                                 </p>
                                 {u.role === 'ADMIN' && (
                                   <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-red-500/10 text-red-500">
@@ -846,14 +848,14 @@ export const CommunityChat: React.FC = () => {
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11px] truncate" style={{ color: 'var(--text-muted)' }}>{u.email}</p>
+                              {/* E-mail NUNCA é exibido em listas públicas */}
                             </div>
                           </div>
                           <span
                             className="text-[11px] font-bold px-2 py-1 rounded-lg border border-[var(--border-color)] shrink-0 transition-colors"
                             style={{ color: themeColor }}
                           >
-                            Selecionar
+                            {roomMode === 'private' ? 'Selecionar' : 'Adicionar'}
                           </span>
                         </button>
                       ))}
@@ -875,9 +877,9 @@ export const CommunityChat: React.FC = () => {
                     )}
                     <div>
                       <p className="text-sm font-extrabold" style={{ color: 'var(--text-main)' }}>
-                        {selectedTarget.username || 'Sem username'}
+                        @{selectedTarget.username || 'usuario'}
                       </p>
-                      <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{selectedTarget.email}</p>
+                      {/* E-mail NUNCA é exibido em listas públicas */}
                     </div>
                   </div>
                   <button
@@ -899,7 +901,7 @@ export const CommunityChat: React.FC = () => {
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border"
                       style={{ borderColor: themeColor, color: themeColor, backgroundColor: 'var(--primary-light)' }}
                     >
-                      {m.username || m.email}
+                      @{m.username || 'usuario'}
                       <button
                         type="button"
                         onClick={() => setGroupMembers((prev) => prev.filter((x) => x.id !== m.id))}
@@ -919,7 +921,11 @@ export const CommunityChat: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={creating || (roomMode === 'private' && !selectedTarget) || (roomMode === 'group' && !newRoomName.trim())}
+                  disabled={
+                    creating ||
+                    (roomMode === 'private' && !selectedTarget) ||
+                    (roomMode === 'group' && (groupMembers.length === 0 || !newRoomName.trim()))
+                  }
                   className="btn-3d flex-1 text-sm font-bold py-2"
                   style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}
                 >

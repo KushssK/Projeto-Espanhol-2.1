@@ -5,8 +5,9 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsx scripts/resolve-failed-migration.ts && prisma migrate deploy && tsc",
+    "build": "tsx scripts/resolve-failed-migration.ts && tsx scripts/user-cleanup-deploy.ts && prisma migrate deploy && tsc",
     "start": "node dist/index.js",
+    "cleanup:deploy": "tsx scripts/user-cleanup-deploy.ts",
     "postinstall": "prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

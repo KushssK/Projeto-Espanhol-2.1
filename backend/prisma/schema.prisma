@@ -24,7 +24,8 @@ model User {
   id                  String    @id @default(uuid())
   email               String    @unique
   username            String?   @unique
-  accessCodeHash      String?   // Hash do código de acesso (6 caracteres) usado no login
+  passwordHash        String?   // Hash bcrypt da senha (segunda credencial de login)
+  accessCodeHash      String?   // Hash bcrypt do código de acesso (6 caracteres)
   dob                 DateTime  // Data de nascimento
   role                Role      @default(STUDENT)
   avatarUrl           String?

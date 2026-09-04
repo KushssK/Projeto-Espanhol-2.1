@@ -12,7 +12,13 @@ const emailSchema = z
     message: 'E-mail inválido.',
   });
 
-// Código de acesso: exatamente 6 caracteres alfanuméricos
+// Senha: credencial permanente de login
+const passwordSchema = z
+  .string()
+  .min(6, 'A senha deve ter pelo menos 6 caracteres.')
+  .max(100, 'A senha deve ter no máximo 100 caracteres.');
+
+// Código de acesso: exatamente 6 caracteres alfanuméricos (segunda credencial)
 const accessCodeSchema = z
   .string()
   .regex(/^[A-Za-z0-9]{6}$/, 'O código de acesso deve ter exatamente 6 caracteres alfanuméricos.');
@@ -43,15 +49,17 @@ const usernameSchema = z
 
 export const registerSchema = z.object({
   email: emailSchema,
+  password: passwordSchema,
   dob: dobSchema,
   username: usernameSchema,
 });
 
 export const loginSchema = z.object({
   email: emailSchema,
+  password: z.string().min(1, 'Senha é obrigatória.'),
   accessCode: accessCodeSchema,
 });
 
 // Tipos inferidos
 export type RegisterInput = z.infer<typeof registerSchema>;
-export type LoginInput = z.infer<typeof loginSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;

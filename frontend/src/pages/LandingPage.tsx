@@ -40,7 +40,7 @@ const Hero: React.FC = () => {
       />
       <div
         className="absolute bottom-[-15%] right-[-10%] w-[400px] h-[400px] rounded-full opacity-15 blur-[100px] pointer-events-none"
-        style={{ background: '#A855F7' }}
+        style={{ background: 'var(--primary-hover)' }}
       />
 
       <div className="max-w-[1100px] mx-auto flex flex-col lg:flex-row items-center gap-12 lg:gap-16 relative z-10">

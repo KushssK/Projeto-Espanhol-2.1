@@ -1283,28 +1283,46 @@ const AppearanceTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [colorError, setColorError] = useState('');
   const logoRef = React.useRef<HTMLInputElement>(null);
+
+  // Mesma regra do backend (isValidThemeColor): apenas hex #RGB ou #RRGGBB.
+  const isValidColor = (value: string) => /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value.trim());
+
+  const handleColorChange = (value: string) => {
+    setColor(value);
+    if (value.trim() === '' || isValidColor(value)) {
+      setColorError('');
+    } else {
+      setColorError('Cor inválida. Use o formato hex (#RGB ou #RRGGBB), ex.: #7C3AED.');
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
       try {
         const res = await api.get('/settings');
-        setColor(res.data.themeColor || '#7C3AED');
+        handleColorChange(res.data.themeColor || '#7C3AED');
         setLogoUrl(res.data.logoUrl || null);
       } catch (error) {
         console.error('Erro ao carregar settings:', error);
       }
     };
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const saveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isValidColor(color)) {
+      setColorError('Cor inválida. Use o formato hex (#RGB ou #RRGGBB), ex.: #7C3AED.');
+      return;
+    }
     setSaving(true);
     setSaved(false);
     try {
-      await api.put('/settings', { themeColor: color, logoUrl });
-      updateSettingsOnState(color, logoUrl);
+      await api.put('/settings', { themeColor: color.trim(), logoUrl });
+      updateSettingsOnState(color.trim(), logoUrl);
       await fetchSettings();
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -1339,16 +1357,22 @@ const AppearanceTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
           <div className="flex items-center gap-4">
             <input
               type="color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
+              value={isValidColor(color) ? color : '#7C3AED'}
+              onChange={(e) => handleColorChange(e.target.value)}
               className="h-14 w-14 rounded-xl border border-[var(--border-color)] cursor-pointer"
               style={{ background: 'transparent' }}
             />
-            <Input value={color} onChange={(e) => setColor(e.target.value)} className="flex-1 font-mono" />
+            <Input value={color} onChange={(e) => handleColorChange(e.target.value)} className="flex-1 font-mono" />
           </div>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            O front-end consome esta cor dinamicamente via <code>GET /api/settings</code> (CSS variables).
-          </p>
+          {colorError ? (
+            <p className="text-xs font-bold" style={{ color: 'var(--color-danger)' }}>
+              {colorError}
+            </p>
+          ) : (
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              O front-end consome esta cor dinamicamente via <code>GET /api/settings</code> (CSS variables).
+            </p>
+          )}
 
           <div className="flex flex-col gap-2">
             <h4 className="text-xs font-black uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Logomarca</h4>
@@ -1359,7 +1383,12 @@ const AppearanceTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
             </button>
           </div>
 
-          <button type="submit" disabled={saving} className="btn-3d font-bold" style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}>
+          <button
+            type="submit"
+            disabled={saving || !isValidColor(color)}
+            className="btn-3d font-bold"
+            style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
+          >
             {saving ? 'Salvando...' : <><Save size={18} /> Salvar Identidade Visual</>}
           </button>
           {saved && (

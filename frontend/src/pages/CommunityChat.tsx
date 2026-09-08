@@ -362,7 +362,7 @@ export const CommunityChat: React.FC = () => {
   // ==========================================================================
   const runUserSearch = useCallback(
     async (q: string) => {
-      const term = q.trim();
+      const term = q.trim().replace(/^@+/, '');
       if (term.length < 2) {
         setSearchResults([]);
         setSearchDone(false);

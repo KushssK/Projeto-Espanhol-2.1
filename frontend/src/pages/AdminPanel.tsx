@@ -4,7 +4,7 @@ import { useThemeStore } from '../stores/useThemeStore';
 import { YouTubePlayer, extractYouTubeId } from '../components/YouTubePlayer';
 import {
   LayoutDashboard, FolderTree, Library, ShieldCheck, Users, Palette,
-  Plus, Trash2, ArrowUp, ArrowDown, X, Check, Save, Upload, Eye, Ban, RefreshCw, FileText, ExternalLink, RotateCcw
+  Plus, Trash2, ArrowUp, ArrowDown, X, Save, Upload, Eye, Ban, RefreshCw, FileText, ExternalLink, RotateCcw
 } from 'lucide-react';
 
 // ============================================================================
@@ -1324,7 +1324,9 @@ const AppearanceTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
     setSaving(true);
     setSaved(false);
     try {
-      await api.put('/settings', { themeColor: color.trim(), logoUrl });
+      // Envia APENAS a cor — a logo tem fluxo próprio (upload em /settings/logo)
+      // e não pode bloquear nem ser sobrescrita pelo save da cor.
+      await api.put('/settings', { themeColor: color.trim() });
       updateSettingsOnState(color.trim(), logoUrl);
       await fetchSettings();
       setSaved(true);
@@ -1379,21 +1381,6 @@ const AppearanceTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
             </p>
           )}
 
-          <div className="flex flex-col gap-2">
-            <h4 className="text-xs font-black uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Logomarca</h4>
-            {logoUrl && <img src={assetUrl(logoUrl)} alt="Logo atual" className="h-12 w-auto object-contain" />}
-            <input ref={logoRef} type="file" accept="image/*" onChange={uploadLogo} className="hidden" />
-            <button type="button" onClick={() => logoRef.current?.click()} className="btn-3d btn-secondary text-sm font-bold" style={{ padding: '10px 18px' }}>
-              <Upload size={16} /> Enviar Nova Logo
-            </button>
-          </div>
-
-          {logoError && (
-            <p className="text-xs font-bold" style={{ color: 'var(--color-danger)' }}>
-              {logoError}
-            </p>
-          )}
-
           {formError && (
             <div className="p-3 rounded-xl text-xs font-bold border" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}>
               {formError}
@@ -1403,17 +1390,47 @@ const AppearanceTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
           <button
             type="submit"
             disabled={saving || !isValidColor(color)}
-            className="btn-3d font-bold"
+            className="btn-3d font-bold self-start"
             style={{ '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as React.CSSProperties}
           >
-            {saving ? 'Salvando...' : <><Save size={18} /> Salvar Identidade Visual</>}
+            {saving ? 'Salvando...' : <><Save size={18} /> Salvar Cor Principal</>}
           </button>
+
           {saved && (
-            <p className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--color-success)' }}>
-              <Check size={16} /> Alterações aplicadas em tempo real!
+            <p className="text-xs font-bold" style={{ color: 'var(--color-success)' }}>
+              Cor salva com sucesso! A alteração já está ativa em todo o site.
             </p>
           )}
         </form>
+      </Card>
+
+      <Card title="Logomarca">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <h4 className="text-xs font-black uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Logo atual</h4>
+            {logoUrl ? (
+              <img src={assetUrl(logoUrl)} alt="Logo atual" className="h-12 w-auto object-contain self-start" />
+            ) : (
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Nenhuma logo configurada. Envie uma imagem (PNG, JPG ou SVG).
+              </p>
+            )}
+            <input ref={logoRef} type="file" accept="image/*" onChange={uploadLogo} className="hidden" />
+            <button type="button" onClick={() => logoRef.current?.click()} className="btn-3d btn-secondary text-sm font-bold self-start" style={{ padding: '10px 18px' }}>
+              <Upload size={16} /> {logoUrl ? 'Substituir Logo' : 'Enviar Logo'}
+            </button>
+          </div>
+
+          {logoError && (
+            <p className="text-xs font-bold" style={{ color: 'var(--color-danger)' }}>
+              {logoError}
+            </p>
+          )}
+
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            A logo é aplicada imediatamente após o envio — não precisa salvar a cor.
+          </p>
+        </div>
       </Card>
     </div>
   );

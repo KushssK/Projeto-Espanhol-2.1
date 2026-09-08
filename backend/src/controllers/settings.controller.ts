@@ -58,10 +58,17 @@ export const updateSettings = async (req: AuthRequest, res: Response) => {
 
     let normalizedLogoUrl: string | null = null;
     if (logoUrl !== undefined && logoUrl !== null && logoUrl !== '') {
-      if (typeof logoUrl !== 'string' || !isSafeHttpsUrl(logoUrl)) {
+      if (typeof logoUrl !== 'string') {
         return res.status(400).json({ error: 'URL de logo inválida. Use apenas URLs https seguras.' });
       }
-      normalizedLogoUrl = logoUrl.trim();
+      const trimmed = logoUrl.trim();
+      // Aceita: URL https externa OU caminho interno legítimo
+      // (logo servida do banco em /api/settings/logo ou legado /uploads/).
+      const isInternalPath = /^\/(api\/settings\/logo|uploads\/)/.test(trimmed);
+      if (!isSafeHttpsUrl(trimmed) && !isInternalPath) {
+        return res.status(400).json({ error: 'URL de logo inválida. Use apenas URLs https seguras.' });
+      }
+      normalizedLogoUrl = trimmed;
     }
 
     const data: { themeColor?: string; logoUrl?: string | null } = {};

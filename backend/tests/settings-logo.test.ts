@@ -137,4 +137,24 @@ describe('updateSettings (cor)', () => {
     expect(res.status).toHaveBeenCalledWith(400);
     expect(prismaMock.appSettings.upsert).not.toHaveBeenCalled();
   });
+
+  it('logoUrl interno (/api/settings/logo?v=...) é aceito — cor e logo salvam juntos sem 400', async () => {
+    prismaMock.appSettings.upsert.mockResolvedValue({ id: 1, themeColor: '#2563EB', logoUrl: '/api/settings/logo?v=1', updatedAt: new Date() });
+
+    const res = makeRes();
+    await updateSettings({ ...ADMIN_REQ, body: { themeColor: '#2563EB', logoUrl: '/api/settings/logo?v=1788868800' } } as AuthRequest, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(prismaMock.appSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ update: { themeColor: '#2563EB', logoUrl: '/api/settings/logo?v=1788868800' } })
+    );
+  });
+
+  it('logoUrl perigosa (javascript:) continua rejeitada', async () => {
+    const res = makeRes();
+    await updateSettings({ ...ADMIN_REQ, body: { themeColor: '#2563EB', logoUrl: 'javascript:alert(1)' } } as AuthRequest, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(prismaMock.appSettings.upsert).not.toHaveBeenCalled();
+  });
 });

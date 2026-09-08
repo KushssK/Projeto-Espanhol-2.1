@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { AuthRequest } from '../middlewares/auth.middleware';
-import { getIO, leaveUserRooms } from '../socket';
+import { getIO, leaveUserRooms, joinUserRooms, emitToUser } from '../socket';
 import { areFriends, isPrivateRoomBlocked } from '../lib/friendship';
 import { MediaType } from '../generated/prisma/enums';
 import { persistUpload } from '../lib/storage';
@@ -91,6 +91,14 @@ export const createPrivateRoom = async (req: AuthRequest, res: Response) => {
       },
     });
 
+    // Sockets já conectados não entram sozinhos em salas criadas depois da
+    // conexão — adiciona todos os sockets dos membros e avisa para recarregar
+    // a lista de conversas em tempo real.
+    for (const member of newRoom.members) {
+      joinUserRooms(member.userId, newRoom.id);
+      emitToUser(member.userId, 'rooms_updated', { roomId: newRoom.id });
+    }
+
     return res.status(201).json(newRoom);
   } catch (error) {
     console.error('Erro ao criar sala privada:', error);
@@ -167,6 +175,14 @@ export const createGroupRoom = async (req: AuthRequest, res: Response) => {
         },
       },
     });
+
+    // Sockets já conectados não entram sozinhos em salas criadas depois da
+    // conexão — adiciona todos os sockets dos membros e avisa para recarregar
+    // a lista de conversas em tempo real.
+    for (const member of newRoom.members) {
+      joinUserRooms(member.userId, newRoom.id);
+      emitToUser(member.userId, 'rooms_updated', { roomId: newRoom.id });
+    }
 
     return res.status(201).json(newRoom);
   } catch (error) {

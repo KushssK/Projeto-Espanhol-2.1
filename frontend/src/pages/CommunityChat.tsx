@@ -229,6 +229,16 @@ export const CommunityChat: React.FC = () => {
       }
     };
 
+    // Uma sala nova foi criada (ex.: fui adicionado a um grupo) → recarrega conversas
+    const handleRoomsUpdated = async () => {
+      const list = await loadRooms();
+      const current = activeRoomIdRef.current;
+      if (current) {
+        const updated = list.find((r) => r.id === current);
+        if (updated) setActiveRoom(updated);
+      }
+    };
+
     const handleUserTyping = ({ userId, roomId }: { userId: string; roomId: string }) => {
       if (roomId !== activeRoomIdRef.current) return;
       if (userId === currentUserIdRef.current) return;
@@ -261,6 +271,7 @@ export const CommunityChat: React.FC = () => {
     socket.on('friends_updated', handleFriendsUpdated);
     socket.on('blocks_updated', handleBlocksUpdated);
     socket.on('member_left', handleMemberLeft);
+    socket.on('rooms_updated', handleRoomsUpdated);
 
     return () => {
       socket.off('connect', handleConnect);
@@ -271,6 +282,7 @@ export const CommunityChat: React.FC = () => {
       socket.off('friends_updated', handleFriendsUpdated);
       socket.off('blocks_updated', handleBlocksUpdated);
       socket.off('member_left', handleMemberLeft);
+      socket.off('rooms_updated', handleRoomsUpdated);
     };
   }, [loadRooms, loadFriends, loadBlocks]);
 

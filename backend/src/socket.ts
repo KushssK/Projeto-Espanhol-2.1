@@ -48,6 +48,20 @@ export const leaveUserRooms = (userId: string, roomId: string) => {
   }
 };
 
+/**
+ * Adiciona TODOS os sockets conectados de um usuário a uma sala.
+ * Necessário ao criar uma sala nova: sockets já conectados não entram
+ * automaticamente (o auto-join acontece apenas na conexão).
+ */
+export const joinUserRooms = (userId: string, roomId: string) => {
+  if (!ioInstance) return;
+  const socketIds = userSockets.get(userId);
+  if (!socketIds) return;
+  for (const socketId of socketIds) {
+    ioInstance.sockets.sockets.get(socketId)?.join(roomId);
+  }
+};
+
 // ============================================================================
 // Setup do Socket.IO com persistência
 // ============================================================================

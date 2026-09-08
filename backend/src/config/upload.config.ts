@@ -82,7 +82,9 @@ export const uploadLogo = multer({
   storage: createStorage('branding'),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (_req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'];
+    // SVG deliberadamente bloqueado: permite execução de script/HTML arbitrário
+    // quando servido no domínio da aplicação. Somente formatos raster seguros.
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
     if (allowed.includes(file.mimetype)) {
       cb(null, true);
     } else {

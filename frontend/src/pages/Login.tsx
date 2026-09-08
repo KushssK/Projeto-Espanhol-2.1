@@ -8,10 +8,9 @@ import { AlertCircle, Lock, Mail } from 'lucide-react';
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [accessCode, setAccessCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  
+
   const { login } = useAuthStore();
   const { themeColor } = useThemeStore();
   const navigate = useNavigate();
@@ -20,14 +19,14 @@ export const Login: React.FC = () => {
     e.preventDefault();
     setError(null);
 
-    if (!email || !password || !accessCode) {
+    if (!email || !password) {
       setError('Por favor, preencha todos os campos.');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await api.post('/auth/login', { email, password, accessCode });
+      const response = await api.post('/auth/login', { email, password });
       const { token, user } = response.data;
       login(token, user);
       navigate('/dashboard');
@@ -85,21 +84,6 @@ export const Login: React.FC = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
-              required
-            />
-          </div>
-
-          <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2" size={20} style={{ color: 'var(--text-muted)' }} />
-            <input
-              type="text"
-              placeholder="Código de acesso (6 caracteres)"
-              className="input-gamified"
-              style={{ paddingLeft: '48px', textTransform: 'uppercase', letterSpacing: '2px' }}
-              value={accessCode}
-              onChange={(e) => setAccessCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
-              maxLength={6}
-              autoComplete="one-time-code"
               required
             />
           </div>

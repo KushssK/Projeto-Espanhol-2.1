@@ -11,8 +11,6 @@ import {
   Copy,
   Shield,
   Calendar,
-  Lock,
-  RefreshCw,
   Sparkles,
 } from 'lucide-react';
 
@@ -40,11 +38,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [savingUsername, setSavingUsername] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(false);
 
-  // Access code state
-  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
-  const [generatingCode, setGeneratingCode] = useState(false);
-  const [codeMsg, setCodeMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
   // Avatar upload state
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState('');
@@ -62,8 +55,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   // Fetch complete profile on open
   useEffect(() => {
     if (isOpen) {
-      setCodeMsg(null);
-      setGeneratedCode(null);
       setAvatarError('');
       setIsEditingUsername(false);
 
@@ -144,21 +135,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     } finally {
       setUploadingAvatar(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handleRegenerateCode = async () => {
-    if (!window.confirm('Gerar um novo código de acesso? O código atual será invalidado imediatamente.')) return;
-    setGeneratingCode(true);
-    setCodeMsg(null);
-    try {
-      const res = await api.post('/auth/regenerate-code');
-      setGeneratedCode(res.data.accessCode);
-      setCodeMsg({ type: 'success', text: 'Novo código gerado! Guarde-o agora — ele será exibido apenas uma vez.' });
-    } catch (err: any) {
-      setCodeMsg({ type: 'error', text: err.response?.data?.error || 'Erro ao gerar novo código.' });
-    } finally {
-      setGeneratingCode(false);
     }
   };
 
@@ -454,81 +430,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             </div>
           </div>
 
-          {/* Seção: Segurança da Conta — código de acesso */}
-          <div className="border-t border-[var(--border-color)] pt-5 flex flex-col gap-3">
-            <h3
-              className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              <Lock size={14} style={{ color: themeColor }} />
-              Segurança da Conta
-            </h3>
-
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              O acesso à sua conta usa <strong>e-mail + senha + código de acesso</strong> de 6 caracteres.
-              Você pode gerar um novo código a qualquer momento — o anterior é invalidado na hora.
-            </p>
-
-            <button
-              type="button"
-              onClick={handleRegenerateCode}
-              disabled={generatingCode}
-              className="btn-3d text-xs font-bold self-start"
-              style={{ padding: '8px 16px', '--btn-bg': themeColor, '--btn-shadow': 'var(--primary-hover)' } as any}
-            >
-              {generatingCode ? 'Gerando...' : <><RefreshCw size={14} /> Gerar novo código de acesso</>}
-            </button>
-
-            {codeMsg && (
-              <div
-                className="p-3 rounded-xl text-xs font-bold border"
-                style={{
-                  backgroundColor:
-                    codeMsg.type === 'success'
-                      ? 'rgba(34, 197, 94, 0.1)'
-                      : 'rgba(239, 68, 68, 0.1)',
-                  borderColor:
-                    codeMsg.type === 'success'
-                      ? 'var(--color-success)'
-                      : 'var(--color-danger)',
-                  color:
-                    codeMsg.type === 'success'
-                      ? 'var(--color-success)'
-                      : 'var(--color-danger)',
-                }}
-              >
-                {codeMsg.text}
-              </div>
-            )}
-
-            {generatedCode && (
-              <div className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--panel-bg)] flex flex-col gap-3 items-center text-center">
-                <p className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
-                  SEU NOVO CÓDIGO DE ACESSO
-                </p>
-                <div
-                  className="text-3xl font-black tracking-[0.3em] font-mono px-6 py-3 rounded-xl border-2"
-                  style={{ borderColor: themeColor, color: themeColor, backgroundColor: 'var(--primary-light)' }}
-                >
-                  {generatedCode}
-                </div>
-                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                  ⚠️ Este código é exibido apenas uma vez. Guarde-o em local seguro.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(generatedCode);
-                    setCodeMsg({ type: 'success', text: 'Código copiado para a área de transferência!' });
-                  }}
-                  className="btn-3d text-xs font-bold"
-                  style={{ padding: '6px 14px', '--btn-bg': 'var(--bg-color)', color: 'var(--text-main)', border: '1px solid var(--border-color)' } as any}
-                >
-                  <Copy size={13} /> Copiar código
-                </button>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Rodapé com Ações */}

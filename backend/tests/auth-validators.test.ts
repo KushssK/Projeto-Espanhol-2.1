@@ -41,36 +41,23 @@ describe('registerSchema', () => {
   });
 });
 
-describe('loginSchema (e-mail + senha + código)', () => {
+describe('loginSchema (e-mail + senha — sem código)', () => {
   const base = {
     email: 'aluno@exemplo.com',
     password: 'senha123',
-    accessCode: 'A7K29X',
   };
 
-  it('aceita código de exatamente 6 alfanuméricos', () => {
+  it('aceita e-mail + senha (login direto, sem etapa de código)', () => {
     expect(loginSchema.safeParse(base).success).toBe(true);
   });
 
-  it('rejeita código com 5 caracteres', () => {
-    expect(loginSchema.safeParse({ ...base, accessCode: 'A7K29' }).success).toBe(false);
-  });
-
-  it('rejeita código com 7 caracteres', () => {
-    expect(loginSchema.safeParse({ ...base, accessCode: 'A7K29XX' }).success).toBe(false);
-  });
-
-  it('rejeita código com caracteres especiais', () => {
-    expect(loginSchema.safeParse({ ...base, accessCode: 'A7K2@X' }).success).toBe(false);
-  });
-
-  it('exige os três campos (falta senha → rejeita)', () => {
+  it('exige os dois campos (falta senha → rejeita)', () => {
     const { password: _pw, ...semSenha } = base;
     expect(loginSchema.safeParse(semSenha).success).toBe(false);
   });
 
-  it('exige os três campos (falta código → rejeita)', () => {
-    const { accessCode: _code, ...semCodigo } = base;
-    expect(loginSchema.safeParse(semCodigo).success).toBe(false);
+  it('exige os dois campos (falta e-mail → rejeita)', () => {
+    const { email: _em, ...semEmail } = base;
+    expect(loginSchema.safeParse(semEmail).success).toBe(false);
   });
 });

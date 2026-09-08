@@ -481,7 +481,7 @@ const ComoFunciona: React.FC = () => {
     {
       num: '1',
       title: 'Crie sua conta',
-      desc: 'Cadastre-se gratuitamente com seu e-mail. O login é protegido com verificação por código.',
+      desc: 'Cadastre-se gratuitamente com seu e-mail e senha. Simples e seguro.',
       icon: <User size={22} />,
     },
     {

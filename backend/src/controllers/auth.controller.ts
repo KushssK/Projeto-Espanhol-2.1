@@ -3,8 +3,6 @@ import bcrypt from 'bcrypt';
 import { prisma } from '../lib/prisma';
 import { signToken } from '../lib/token';
 import { publicUser } from '../lib/user';
-import { generateAccessCode } from '../lib/access-code';
-import { AuthRequest } from '../middlewares/auth.middleware';
 import { registerSchema, loginSchema } from '../validators/auth.validators';
 
 // ============================================================================
@@ -24,7 +22,7 @@ function normalizeEmail(email: string): string {
 }
 
 // ============================================================================
-// CADASTRO — senha (hash bcrypt) + código de acesso exibido UMA única vez
+// CADASTRO — validação → criação da conta → sessão (token JWT)
 // ============================================================================
 
 export const register = async (req: Request, res: Response) => {
@@ -46,11 +44,6 @@ export const register = async (req: Request, res: Response) => {
     // Senha: armazenada SOMENTE como hash bcrypt (nunca em texto puro).
     const passwordHash = await bcrypt.hash(password, HASH_ROUNDS);
 
-    // Código de acesso: gerado de forma criptograficamente segura (crypto.randomInt),
-    // também armazenado SOMENTE como hash bcrypt — nunca em texto puro.
-    const accessCode = generateAccessCode();
-    const accessCodeHash = await bcrypt.hash(accessCode, HASH_ROUNDS);
-
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
@@ -68,20 +61,17 @@ export const register = async (req: Request, res: Response) => {
       data: {
         email: normalizedEmail,
         passwordHash,
-        accessCodeHash,
         dob: new Date(dob),
         username,
         role,
       },
     });
 
-    // O código é devolvido UMA única vez nesta resposta, para o usuário guardar.
-    // Nunca é registrado em logs e os hashes nunca são expostos pela API.
+    // Registro direto: a conta já é criada autenticada, sem etapa de código.
     return res.status(201).json({
-      message: 'Conta criada com sucesso! Guarde o seu código de acesso.',
+      message: 'Conta criada com sucesso!',
       token: signToken(newUser.id, newUser.role),
       user: publicUser(newUser),
-      accessCode,
     });
   } catch (error) {
     console.error('Erro no registro:', error);
@@ -90,17 +80,17 @@ export const register = async (req: Request, res: Response) => {
 };
 
 // ============================================================================
-// LOGIN — e-mail + senha + código de acesso (duas credenciais obrigatórias)
+// LOGIN — e-mail + senha → sessão (token JWT)
 // ============================================================================
 
 export const login = async (req: Request, res: Response) => {
   try {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.issues[0]?.message || 'E-mail, senha e código de acesso são obrigatórios.' });
+      return res.status(400).json({ error: parsed.error.issues[0]?.message || 'E-mail e senha são obrigatórios.' });
     }
 
-    const { email, password, accessCode } = parsed.data;
+    const { email, password } = parsed.data;
     const normalizedEmail = normalizeEmail(email);
 
     const user = await prisma.user.findUnique({
@@ -109,7 +99,7 @@ export const login = async (req: Request, res: Response) => {
 
     // Mensagem genérica — não revela se o e-mail existe (anti enumeração)
     if (!user) {
-      return res.status(401).json({ error: 'E-mail, senha ou código de acesso inválidos.' });
+      return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
     }
 
     // Bloqueio temporário após tentativas em excesso
@@ -120,14 +110,12 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    // Comparações seguras: bcrypt.compare é de tempo aproximadamente constante.
-    // Ambas as credenciais são verificadas (senha E código).
-    const [passwordMatches, codeMatches] = await Promise.all([
-      user.passwordHash ? bcrypt.compare(password, user.passwordHash) : Promise.resolve(false),
-      user.accessCodeHash ? bcrypt.compare(accessCode, user.accessCodeHash) : Promise.resolve(false),
-    ]);
+    // Comparação segura: bcrypt.compare é de tempo aproximadamente constante.
+    const passwordMatches = user.passwordHash
+      ? await bcrypt.compare(password, user.passwordHash)
+      : false;
 
-    if (!passwordMatches || !codeMatches) {
+    if (!passwordMatches) {
       const failedAttempts = user.failedLoginAttempts + 1;
 
       if (failedAttempts >= MAX_LOGIN_ATTEMPTS) {
@@ -148,7 +136,7 @@ export const login = async (req: Request, res: Response) => {
         where: { id: user.id },
         data: { failedLoginAttempts: failedAttempts },
       });
-      return res.status(401).json({ error: 'E-mail, senha ou código de acesso inválidos.' });
+      return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
     }
 
     // Sucesso: reseta tentativas e libera qualquer bloqueio.
@@ -173,40 +161,3 @@ export const login = async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Erro interno no servidor' });
   }
 };
-
-// ============================================================================
-// GERAR NOVO CÓDIGO DE ACESSO — invalida o anterior, mantém a senha intacta
-// ============================================================================
-
-export const regenerateAccessCode = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user?.userId;
-    if (!userId) {
-      return res.status(401).json({ error: 'Não autenticado.' });
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      return res.status(404).json({ error: 'Usuário não encontrado.' });
-    }
-
-    // Gera novo código e sobrescreve o hash — o anterior é invalidado imediatamente.
-    // A senha (passwordHash) NÃO é alterada por esta operação.
-    const accessCode = generateAccessCode();
-    const accessCodeHash = await bcrypt.hash(accessCode, HASH_ROUNDS);
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: { accessCodeHash, failedLoginAttempts: 0, lockoutUntil: null },
-    });
-
-    // Exibido UMA única vez; apenas o hash fica armazenado.
-    return res.status(200).json({
-      message: 'Novo código gerado! O código anterior foi invalidado. Guarde este novo código.',
-      accessCode,
-    });
-  } catch (error) {
-    console.error('Erro ao gerar novo código de acesso:', error);
-    return res.status(500).json({ error: 'Erro interno no servidor' });
-  }
-};

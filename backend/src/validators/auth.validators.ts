@@ -19,10 +19,7 @@ const passwordSchema = z
   .min(6, 'A senha deve ter pelo menos 6 caracteres.')
   .max(100, 'A senha deve ter no máximo 100 caracteres.');
 
-// Código de acesso: exatamente 6 caracteres alfanuméricos (segunda credencial)
-const accessCodeSchema = z
-  .string()
-  .regex(/^[A-Za-z0-9]{6}$/, 'O código de acesso deve ter exatamente 6 caracteres alfanuméricos.');
+// Código de acesso removido — login usa apenas e-mail + senha.
 
 // Data de nascimento: deve existir, ser no passado e o usuário ter 13 anos COMPLETOS
 // (cálculo exato por dia — aniversário de amanhã ainda não conta).
@@ -57,9 +54,8 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
   email: emailSchema,
   password: z.string().min(1, 'Senha é obrigatória.'),
-  accessCode: accessCodeSchema,
 });
 
 // Tipos inferidos
 export type RegisterInput = z.infer<typeof registerSchema>;
-export type LoginInput = z.infer<typeof loginSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;

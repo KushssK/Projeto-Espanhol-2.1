@@ -2,7 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 
 // ============================================================================
 // Rate Limiter em memória (janela deslizante)
-// Ideal para uma única instância Node no cPanel — sem dependências externas.
+//
+// LIMITAÇÃO DOCUMENTADA: o store é em memória e por processo — adequado para
+// uma única instância Node (deploy atual no Render). Em multi-instância, o
+// limite seria por réplica (um atacante poderia distribuir as tentativas).
+// Para escalar, substitua o Map abaixo por um contador atômico no Redis
+// (INCR + EXPIRE) mantendo a MESMA assinatura de `rateLimit(max, window)` —
+// nenhum call site precisa mudar.
 // ============================================================================
 
 interface Bucket {

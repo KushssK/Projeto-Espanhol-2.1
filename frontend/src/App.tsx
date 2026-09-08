@@ -30,16 +30,15 @@ function App() {
     checkAuth()
   }, [fetchSettings, checkAuth])
 
-  // Detect dark mode from system preference or document class
+  // O tema claro é o padrão; o botão de alternância da navbar é a única
+  // fonte de verdade (persistida em localStorage). A preferência do sistema
+  // operacional NÃO sobrescreve a escolha do usuário.
   useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const checkDark = () => setIsDark(document.documentElement.classList.contains('dark') || mq.matches)
+    const checkDark = () => setIsDark(document.documentElement.classList.contains('dark'))
     checkDark()
-    mq.addEventListener('change', checkDark)
     const observer = new MutationObserver(checkDark)
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
     return () => {
-      mq.removeEventListener('change', checkDark)
       observer.disconnect()
     }
   }, [])

@@ -1,22 +1,25 @@
-const CACHE_VERSION = 'espanhol-em-rede-v3';
+// Estratégia de cache robusta contra deploy mascarado:
+//  - NAVEGAÇÃO: sempre network-first (o usuário recebe o bundle novo do deploy).
+//    Apenas em falha de rede usa o último index.html baixado (offline).
+//  - ASSETS: cache-first POR URL — os bundles do Vite são hasheados, então um
+//    deploy novo gera URLs novas e o cache antigo nunca é servido.
+//  - Nada de precache de '/' ou '/index.html' (evita shell antigo).
+const CACHE_VERSION = 'espanhol-em-rede-v4';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
-const PRECACHE_URLS = ['/', '/index.html', '/manifest.json'];
-
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE_URLS)).then(() => self.skipWaiting())
-  );
+  // Precache vazio de propósito: index.html sempre vem da rede no primeiro acesso.
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((k) => !k.startsWith(CACHE_VERSION)).map((k) => caches.delete(k))
+    caches.keys()
+      .then((keys) =>
+        Promise.all(keys.filter((k) => !k.startsWith(CACHE_VERSION)).map((k) => caches.delete(k)))
       )
-    ).then(() => self.clients.claim())
+      .then(() => self.clients.claim())
   );
 });
 
@@ -35,22 +38,30 @@ self.addEventListener('fetch', (event) => {
 
   if (request.method !== 'GET') return;
 
+  // API: nunca cai no cache, exceto /settings (stale-while-revalidate)
   if (url.pathname.startsWith('/api/')) {
     if (url.pathname.endsWith('/settings')) {
       event.respondWith(staleWhileRevalidate(request, RUNTIME_CACHE));
-      return;
     }
     return;
   }
 
+  // Navegação: network-first com fallback offline para o último index.html
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => caches.match('/index.html'))
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => cache.put('/index.html', copy)).catch(() => undefined);
+          return response;
+        })
+        .catch(() => caches.match('/index.html'))
     );
     return;
   }
 
-  if (url.pathname.match(/\.(js|css|woff2?|png|jpg|svg|ico)$/)) {
+  // Assets hasheados (js/css/fontes/imagens): cache-first é seguro (hash no nome)
+  if (url.pathname.match(/\.(js|css|woff2?|png|jpg|jpeg|webp|gif|ico)$/)) {
     event.respondWith(cacheFirst(request, STATIC_CACHE));
   }
 });
@@ -72,4 +83,4 @@ async function staleWhileRevalidate(request, cacheName) {
     return response;
   });
   return cached || network;
-}
+}

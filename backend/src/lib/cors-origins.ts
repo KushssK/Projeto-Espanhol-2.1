@@ -10,7 +10,8 @@
  *      O padrão cobre QUALQUER hash gerado pelo Vercel para este projeto —
  *      inclusive a URL atual (3se7rd1e0) e a anterior (npai5qyfu) — evitando
  *      nova quebra de CORS caso o domínio automático seja regenerado;
- *   4. Está na lista padrão (localhost para desenvolvimento).
+ *   4. Está na lista padrão — domínio fixo de produção
+ *      (https://construindo-saberes.vercel.app) e localhost para desenvolvimento.
  */
 
 const normalizeOrigin = (origin: string): string =>
@@ -27,9 +28,13 @@ const VERCEL_PROJECT_DOMAIN =
   /^https:\/\/projeto-espanhol-[a-z0-9]+-kushssks-projects\.vercel\.app$/;
 
 // Origens padrão aceitas mesmo sem CORS_ORIGIN configurado.
+// `construindo-saberes.vercel.app` é o domínio fixo de produção do frontend
+// (definir em Vercel → Settings → Domains); os demais cobrem deploys
+// automáticos e desenvolvimento local.
 const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:4173',
+  'https://construindo-saberes.vercel.app',
   'https://projeto-espanhol-3se7rd1e0-kushssks-projects.vercel.app',
 ].map(normalizeOrigin);
 

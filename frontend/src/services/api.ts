@@ -9,9 +9,13 @@ const API_ORIGIN = API_URL.replace(/\/api\/?$/, '');
 /**
  * Converte um caminho relativo de mídia (ex.: /uploads/avatars/x.png)
  * em URL absoluta apontando para o servidor de arquivos.
+ * URLs já absolutas (ex.: Supabase Storage) passam direto.
  */
-export const assetUrl = (path?: string | null): string =>
-  path ? `${API_ORIGIN}${path.startsWith('/') ? path : `/${path}`}` : '';
+export const assetUrl = (path?: string | null): string => {
+  if (!path) return '';
+  if (/^https?:\/\//i.test(path)) return path; // já é URL absoluta
+  return `${API_ORIGIN}${path.startsWith('/') ? path : `/${path}`}`;
+};
 
 export const api = axios.create({
   baseURL: API_URL,

@@ -2,8 +2,7 @@ import { Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { MediaType } from '../generated/prisma/enums';
-import fs from 'fs';
-import path from 'path';
+import { persistUpload, removeStoredFile } from '../lib/storage';
 
 // ============================================================================
 // Helper: determinar MediaType a partir do MIME type
@@ -45,7 +44,7 @@ export const uploadAttachment = async (req: AuthRequest, res: Response) => {
       data: {
         lessonId,
         type: getMediaType(file.mimetype),
-        url: `/uploads/attachments/${file.filename}`,
+        url: await persistUpload(file, 'attachments'),
         orderIndex: nextOrderIndex,
       },
     });
@@ -88,11 +87,8 @@ export const deleteAttachment = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Arquivo não encontrado.' });
     }
 
-    // Remover arquivo do disco
-    const filePath = path.join(process.cwd(), attachment.url);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
+    // Remover arquivo do storage (Supabase em produção, disco em dev)
+    await removeStoredFile(attachment.url);
 
     await prisma.attachment.delete({ where: { id } });
 

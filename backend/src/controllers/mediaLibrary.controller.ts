@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { MediaType } from '../generated/prisma/enums';
 import { parseMediaVideoUrl } from '../lib/media-url';
+import { persistUpload, removeStoredFile } from '../lib/storage';
 
 // ============================================================================
 // Constantes/validação
@@ -84,8 +85,7 @@ export const createMediaItem = async (req: AuthRequest, res: Response) => {
         description,
         type: type as MediaType,
         videoUrl: normalizedVideoUrl,
-        // url local será substituído pela camada de storage persistente
-        url: file && type !== 'VIDEO' ? `/uploads/media/${file.filename}` : null,
+        url: file && type !== 'VIDEO' ? await persistUpload(file, 'media') : null,
         orderIndex: orderIndex ?? 0,
       },
     });
@@ -157,8 +157,7 @@ export const updateMediaItem = async (req: AuthRequest, res: Response) => {
       if (data.type === 'VIDEO') {
         return res.status(400).json({ error: 'Itens de vídeo usam URL, não arquivo.' });
       }
-      // url local será substituído pela camada de storage persistente
-      data.url = `/uploads/media/${file.filename}`;
+      data.url = await persistUpload(file, 'media');
       data.videoUrl = null;
       data.type = data.type || 'PDF';
     }
@@ -184,7 +183,14 @@ export const updateMediaItem = async (req: AuthRequest, res: Response) => {
 export const deleteMediaItem = async (req: AuthRequest, res: Response) => {
   try {
     const id = req.params.id as string;
+    const existing = await prisma.mediaLibrary.findUnique({
+      where: { id },
+      select: { url: true },
+    });
     await prisma.mediaLibrary.delete({ where: { id } });
+    if (existing?.url) {
+      await removeStoredFile(existing.url);
+    }
     return res.status(200).json({ message: 'Item removido do acervo.' });
   } catch (error: any) {
     if (error?.code === 'P2025') {

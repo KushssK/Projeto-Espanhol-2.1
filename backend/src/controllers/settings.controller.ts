@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { isSafeHttpsUrl, isValidThemeColor } from '../lib/input-validation';
+import { persistUpload } from '../lib/storage';
 
 export const getSettings = async (req: Request, res: Response) => {
   try {
@@ -71,7 +72,7 @@ export const uploadSettingsLogo = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Envie o arquivo no campo logo.' });
     }
 
-    const logoUrl = `/uploads/branding/${file.filename}`;
+    const logoUrl = await persistUpload(file, 'branding');
 
     const settings = await prisma.appSettings.upsert({
       where: { id: 1 },

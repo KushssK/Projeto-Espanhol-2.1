@@ -4,6 +4,7 @@ import { AuthRequest } from '../middlewares/auth.middleware';
 import { getIO, leaveUserRooms } from '../socket';
 import { areFriends, isPrivateRoomBlocked } from '../lib/friendship';
 import { MediaType } from '../generated/prisma/enums';
+import { persistUpload } from '../lib/storage';
 
 // ============================================================================
 // Helper: detectar MediaType de chat
@@ -316,7 +317,7 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     };
 
     if (file) {
-      messageData.mediaUrl = `/uploads/chat/${file.filename}`;
+      messageData.mediaUrl = await persistUpload(file, 'chat');
       messageData.mediaType = getChatMediaType(file.mimetype);
     }
 

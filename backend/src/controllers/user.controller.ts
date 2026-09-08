@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { Role } from '../generated/prisma/enums';
+import { persistUpload } from '../lib/storage';
 
 // ============================================================================
 // GET /api/users/me — Perfil do usuário autenticado
@@ -56,7 +57,7 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
 
     const updateData: Record<string, any> = {};
     if (username !== undefined) updateData.username = username;
-    if (file) updateData.avatarUrl = `/uploads/avatars/${file.filename}`;
+    if (file) updateData.avatarUrl = await persistUpload(file, 'avatars');
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },

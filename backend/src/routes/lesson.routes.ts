@@ -10,13 +10,13 @@ import {
   hardDeleteLesson,
   reorderLessons,
 } from '../controllers/lesson.controller';
-import { authenticateToken, requireStaff, requireAdmin } from '../middlewares/auth.middleware';
+import { authenticateToken, requireStaff, requireAdmin, authenticateOptional } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-// Rotas públicas
-router.get('/module/:moduleId', getLessonsByModule);
-router.get('/:id', getLessonById);
+// Rotas públicas — autenticação OPCIONAL (staff vê rascunhos/excluídas)
+router.get('/module/:moduleId', authenticateOptional, getLessonsByModule);
+router.get('/:id', authenticateOptional, getLessonById);
 
 // Rotas protegidas (Staff: Admin + Teacher)
 router.post('/', authenticateToken, requireStaff, createLesson);

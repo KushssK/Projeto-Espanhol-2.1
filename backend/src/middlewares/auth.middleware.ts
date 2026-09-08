@@ -33,6 +33,25 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
   next();
 };
 
+/**
+ * Autenticação OPCIONAL — rotas públicas de conteúdo.
+ * Se um token válido for enviado, anexa o usuário (staff vê conteúdo
+ * administrativo/rascunhos). Sem token ou token inválido, segue como anônimo.
+ */
+export const authenticateOptional = (req: AuthRequest, res: Response, next: NextFunction) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) return next();
+
+  jwt.verify(token, process.env.JWT_SECRET || 'secret', (err, decoded) => {
+    if (!err && decoded) {
+      req.user = decoded as { userId: string; role: string };
+    }
+    next();
+  });
+};
+
 export const requireStaff = (req: AuthRequest, res: Response, next: NextFunction) => {
   if (req.user?.role !== 'ADMIN' && req.user?.role !== 'TEACHER') {
     return res.status(403).json({ error: 'Acesso restrito para staff.' });

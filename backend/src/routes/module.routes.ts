@@ -7,13 +7,13 @@ import {
   deleteModule,
   reorderModules,
 } from '../controllers/module.controller';
-import { authenticateToken, requireAdmin } from '../middlewares/auth.middleware';
+import { authenticateToken, requireAdmin, authenticateOptional } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-// Rotas públicas
-router.get('/', getModules);
-router.get('/:id', getModuleById);
+// Rotas públicas — autenticação OPCIONAL (staff vê rascunhos/excluídas)
+router.get('/', authenticateOptional, getModules);
+router.get('/:id', authenticateOptional, getModuleById);
 
 // Rotas protegidas (Admin)
 router.post('/', authenticateToken, requireAdmin, createModule);

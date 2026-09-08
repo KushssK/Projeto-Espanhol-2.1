@@ -47,6 +47,11 @@ export const getLessonsByModule = async (req: AuthRequest, res: Response) => {
     const isStaff = req.user?.role === 'ADMIN' || req.user?.role === 'TEACHER';
     const includeDeleted = isStaff && req.query.includeDeleted === 'true';
 
+    // Alunos/anônimos também NÃO podem ver aulas soft-deletadas
+    if (!isStaff && req.query.includeDeleted === 'true') {
+      return res.status(403).json({ error: 'Acesso restrito.' });
+    }
+
     const lessons = await prisma.lesson.findMany({
       where: {
         moduleId,
@@ -111,12 +116,11 @@ export const getLessonById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Aula não encontrada.' });
     }
 
-    // Se a aula está soft-deletada, só staff pode ver
-    if (lesson.deletedAt) {
-      const isStaff = req.user?.role === 'ADMIN' || req.user?.role === 'TEACHER';
-      if (!isStaff) {
-        return res.status(404).json({ error: 'Aula não encontrada.' });
-      }
+    // Alunos/anônimos: rascunho e soft-deleted são inacessíveis (404 genérico,
+    // não revela a existência de conteúdo não publicado)
+    const isStaff = req.user?.role === 'ADMIN' || req.user?.role === 'TEACHER';
+    if (!isStaff && (!lesson.published || lesson.deletedAt)) {
+      return res.status(404).json({ error: 'Aula não encontrada.' });
     }
 
     return res.status(200).json(lesson);

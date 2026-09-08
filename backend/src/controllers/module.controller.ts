@@ -5,12 +5,23 @@ import { AuthRequest } from '../middlewares/auth.middleware';
 // ============================================================================
 // GET /api/modules — Listar todos os módulos (público)
 // ============================================================================
-export const getModules = async (req: Request, res: Response) => {
+// Helper: filtro de aulas por papel — alunos/anônimos veem SÓ o publicado e
+// não excluído; staff vê tudo (rascunhos/excluídas p/ gerenciamento).
+function lessonWhereByRole(role: string | undefined): Record<string, unknown> {
+  const isStaff = role === 'ADMIN' || role === 'TEACHER';
+  return isStaff ? {} : { published: true, deletedAt: null };
+}
+
+// ============================================================================
+// GET /api/modules — Listar módulos (público, filtrado por papel)
+// ============================================================================
+export const getModules = async (req: AuthRequest, res: Response) => {
   try {
     const modules = await prisma.module.findMany({
       orderBy: { orderIndex: 'asc' },
       include: {
         lessons: {
+          where: lessonWhereByRole(req.user?.role),
           orderBy: { orderIndex: 'asc' },
           select: {
             id: true,
@@ -32,14 +43,17 @@ export const getModules = async (req: Request, res: Response) => {
 // ============================================================================
 // GET /api/modules/:id — Buscar módulo por ID
 // ============================================================================
-export const getModuleById = async (req: Request, res: Response) => {
+export const getModuleById = async (req: AuthRequest, res: Response) => {
   try {
     const id = req.params.id as string;
+    const isStaff = req.user?.role === 'ADMIN' || req.user?.role === 'TEACHER';
+    const includeAll = isStaff && req.query.includeDeleted === 'true';
 
     const module = await prisma.module.findUnique({
       where: { id },
       include: {
         lessons: {
+          where: includeAll ? {} : lessonWhereByRole(req.user?.role),
           orderBy: { orderIndex: 'asc' },
           include: {
             attachments: {

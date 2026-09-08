@@ -112,10 +112,6 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'E-mail, senha ou código de acesso inválidos.' });
     }
 
-    if (user.isBanned) {
-      return res.status(403).json({ error: 'Conta banida.' });
-    }
-
     // Bloqueio temporário após tentativas em excesso
     if (user.lockoutUntil && user.lockoutUntil.getTime() > Date.now()) {
       const minutes = Math.ceil((user.lockoutUntil.getTime() - Date.now()) / 60_000);
@@ -155,11 +151,17 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'E-mail, senha ou código de acesso inválidos.' });
     }
 
-    // Sucesso: reseta tentativas e libera qualquer bloqueio
+    // Sucesso: reseta tentativas e libera qualquer bloqueio.
+    // Conta banida só é revelada QUEM TEM AS CREDENCIAIS CORRETAS — evita
+    // enumeração do estado de banimento com apenas um e-mail.
     await prisma.user.update({
       where: { id: user.id },
       data: { failedLoginAttempts: 0, lockoutUntil: null },
     });
+
+    if (user.isBanned) {
+      return res.status(403).json({ error: 'Conta banida.' });
+    }
 
     return res.status(200).json({
       message: 'Login realizado com sucesso!',

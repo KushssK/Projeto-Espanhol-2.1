@@ -8,6 +8,7 @@ export function publicUser(user: {
   role: string;
   username: string | null;
   avatarUrl: string | null;
+  isBanned: boolean;
 }) {
   return {
     id: user.id,
@@ -15,6 +16,6 @@ export function publicUser(user: {
     role: user.role,
     username: user.username,
     avatarUrl: user.avatarUrl,
-    isBanned: false,
+    isBanned: user.isBanned, // estado real — nunca valor fixo
   };
-}
+}

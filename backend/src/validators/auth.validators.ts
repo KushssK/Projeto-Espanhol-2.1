@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { hasCompletedAge } from '../lib/age';
 
 // ============================================================================
 // Validação de entrada (Zod) — endpoints de autenticação
@@ -23,7 +24,8 @@ const accessCodeSchema = z
   .string()
   .regex(/^[A-Za-z0-9]{6}$/, 'O código de acesso deve ter exatamente 6 caracteres alfanuméricos.');
 
-// Data de nascimento: deve existir, ser no passado e o usuário ter 13+ anos
+// Data de nascimento: deve existir, ser no passado e o usuário ter 13 anos COMPLETOS
+// (cálculo exato por dia — aniversário de amanhã ainda não conta).
 const dobSchema = z
   .string()
   .min(1, 'Data de nascimento é obrigatória.')
@@ -32,11 +34,9 @@ const dobSchema = z
   })
   .refine((v) => {
     const dob = new Date(v);
-    const now = new Date();
-    const age = now.getFullYear() - dob.getFullYear();
-    return age >= 13;
+    return dob.getTime() < Date.now() && hasCompletedAge(dob, 13);
   }, {
-    message: 'É necessário ter pelo menos 13 anos para se cadastrar.',
+    message: 'É necessário ter pelo menos 13 anos completos para se cadastrar.',
   });
 
 const usernameSchema = z

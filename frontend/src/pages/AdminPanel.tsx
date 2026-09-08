@@ -1284,6 +1284,8 @@ const AppearanceTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [colorError, setColorError] = useState('');
+  const [formError, setFormError] = useState('');
+  const [logoError, setLogoError] = useState('');
   const logoRef = React.useRef<HTMLInputElement>(null);
 
   // Mesma regra do backend (isValidThemeColor): apenas hex #RGB ou #RRGGBB.
@@ -1314,6 +1316,7 @@ const AppearanceTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
 
   const saveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
     if (!isValidColor(color)) {
       setColorError('Cor inválida. Use o formato hex (#RGB ou #RRGGBB), ex.: #7C3AED.');
       return;
@@ -1326,8 +1329,9 @@ const AppearanceTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
       await fetchSettings();
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-    } catch {
-      alert('Erro ao salvar as configurações.');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string }, status?: number } };
+      setFormError(err.response?.data?.error || 'Erro ao salvar as configurações. Verifique sua conexão e tente novamente.');
     } finally {
       setSaving(false);
     }
@@ -1336,6 +1340,7 @@ const AppearanceTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
   const uploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setLogoError('');
     const formData = new FormData();
     formData.append('logo', file);
     try {
@@ -1343,8 +1348,8 @@ const AppearanceTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
       setLogoUrl(res.data.settings.logoUrl);
       await fetchSettings();
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string } } };
-      alert(err.response?.data?.error || 'Erro ao enviar logo (máx 5MB, imagem).');
+      const err = error as { response?: { data?: { error?: string }, status?: number } };
+      setLogoError(err.response?.data?.error || 'Erro ao enviar logo (máx 5MB, imagem).');
     } finally {
       if (logoRef.current) logoRef.current.value = '';
     }
@@ -1382,6 +1387,18 @@ const AppearanceTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
               <Upload size={16} /> Enviar Nova Logo
             </button>
           </div>
+
+          {logoError && (
+            <p className="text-xs font-bold" style={{ color: 'var(--color-danger)' }}>
+              {logoError}
+            </p>
+          )}
+
+          {formError && (
+            <div className="p-3 rounded-xl text-xs font-bold border" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}>
+              {formError}
+            </div>
+          )}
 
           <button
             type="submit"

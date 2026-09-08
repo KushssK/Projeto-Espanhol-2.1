@@ -31,3 +31,20 @@ api.interceptors.request.use((config) => {
 }, (error) => {
   return Promise.reject(error);
 });
+
+// Interceptor de sessão expirada: 401 em qualquer chamada autenticada
+// encerra a sessão local e volta ao login (evita falhas silenciosas com
+// mensagens genéricas — ex.: salvar cor/logo no painel admin).
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const url: string = error.config?.url || '';
+    const isAuthCall = url.includes('/auth/login') || url.includes('/auth/register');
+    if (status === 401 && !isAuthCall && !window.location.pathname.startsWith('/login')) {
+      localStorage.removeItem('token');
+      window.location.assign('/login');
+    }
+    return Promise.reject(error);
+  }
+);

@@ -62,6 +62,10 @@ model AppSettings {
   id         Int      @id @default(1)
   themeColor String   @default("#7C3AED") // Cor principal para consumo dinâmico do front
   logoUrl    String?
+  // Fallback de persistência da logo quando não há Supabase configurado:
+  // o filesystem do Render é efêmero e perde os arquivos a cada deploy.
+  logoData   Bytes?
+  logoMime   String?
   updatedAt  DateTime @updatedAt
 }
 

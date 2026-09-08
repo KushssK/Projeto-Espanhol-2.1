@@ -14,20 +14,30 @@ import fs from 'fs';
 // secrets no frontend.
 // ============================================================================
 
-const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET || 'uploads';
+// Env lido sob demanda (testável e idêntico em produção — as variáveis são
+// fixas no boot do servidor).
+function supabaseConfig() {
+  const url = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+  return {
+    url,
+    key: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    bucket: process.env.SUPABASE_BUCKET || 'uploads',
+  };
+}
 
 export function isSupabaseConfigured(): boolean {
-  return Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+  const { url, key } = supabaseConfig();
+  return Boolean(url && key);
 }
 
 function supabasePublicUrl(objectPath: string): string {
-  return `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${objectPath}`;
+  const { url, bucket } = supabaseConfig();
+  return `${url}/storage/v1/object/public/${bucket}/${objectPath}`;
 }
 
-function isSupabaseUrl(url: string): boolean {
-  return url.startsWith(`${SUPABASE_URL}/storage/v1/object/`);
+function isSupabaseUrl(candidate: string): boolean {
+  const { url } = supabaseConfig();
+  return Boolean(url) && candidate.startsWith(`${url}/storage/v1/object/`);
 }
 
 /**
@@ -45,11 +55,12 @@ export async function persistUpload(file: Express.Multer.File, folder: string): 
     return localPath; // fallback local (desenvolvimento)
   }
 
+  const { url, key, bucket } = supabaseConfig();
   const objectPath = `${folder}/${file.filename}`;
-  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${objectPath}`, {
+  const res = await fetch(`${url}/storage/v1/object/${bucket}/${objectPath}`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      Authorization: `Bearer ${key}`,
       'Content-Type': file.mimetype || 'application/octet-stream',
       'x-upsert': 'false',
     },
@@ -77,11 +88,12 @@ export async function removeStoredFile(url: string | null | undefined): Promise<
   if (!url) return;
 
   if (isSupabaseUrl(url)) {
-    const objectPath = url.replace(`${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/`, '');
+    const { url: suUrl, key, bucket } = supabaseConfig();
+    const objectPath = url.replace(`${suUrl}/storage/v1/object/public/${bucket}/`, '');
     const encoded = objectPath.split('/').map(encodeURIComponent).join('/');
-    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${encoded}`, {
+    const res = await fetch(`${suUrl}/storage/v1/object/${bucket}/${encoded}`, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+      headers: { Authorization: `Bearer ${key}` },
     });
     if (!res.ok) {
       console.error(`[storage] Falha ao remover ${objectPath}: ${res.status}`);

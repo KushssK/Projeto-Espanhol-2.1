@@ -5,6 +5,9 @@ import { randomUUID } from 'crypto';
 // ============================================================================
 // Tipos MIME permitidos por categoria
 // ============================================================================
+// Lista exportada para testes — garante que SVG/HTML nunca entram.
+export const LOGO_ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
 const ALLOWED_MIME_TYPES: Record<string, string[]> = {
   attachment: [
     'application/pdf',
@@ -84,8 +87,7 @@ export const uploadLogo = multer({
   fileFilter: (_req, file, cb) => {
     // SVG deliberadamente bloqueado: permite execução de script/HTML arbitrário
     // quando servido no domínio da aplicação. Somente formatos raster seguros.
-    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
-    if (allowed.includes(file.mimetype)) {
+    if (LOGO_ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       cb(null, true);
     } else {
       cb(new Error(`Tipo de imagem não permitido: ${file.mimetype}`));

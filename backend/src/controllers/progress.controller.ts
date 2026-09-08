@@ -15,6 +15,13 @@ const LEADERBOARD_DEFAULT_LIMIT = 20;
 const LEADERBOARD_MAX_LIMIT = 100;
 const LEADERBOARD_BATCH = 100;
 
+/** Aula disponível para o aluno? Publicada, sem soft delete e existente. */
+export function canCompleteLesson(
+  lesson: { published: boolean; deletedAt: Date | null } | null
+): boolean {
+  return Boolean(lesson && lesson.published && !lesson.deletedAt);
+}
+
 // ============================================================================
 // Helpers puros (exportados para testes)
 // ============================================================================
@@ -65,7 +72,7 @@ export const markLessonComplete = async (req: AuthRequest, res: Response) => {
     // Verificar se a aula existe e está disponível para alunos
     // (publicada e sem soft delete)
     const lesson = await prisma.lesson.findUnique({ where: { id: lessonId } });
-    if (!lesson || !lesson.published || lesson.deletedAt) {
+    if (!canCompleteLesson(lesson)) {
       return res.status(404).json({ error: 'Aula não encontrada ou não publicada.' });
     }
 

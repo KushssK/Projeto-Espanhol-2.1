@@ -35,7 +35,7 @@ interface MediaItem {
   id: string;
   moduleId: string | null;
   title: string;
-  type: 'PDF' | 'AUDIO' | 'IMAGE';
+  type: 'PDF' | 'AUDIO' | 'IMAGE' | 'VIDEO';
   url: string | null;
   videoUrl: string | null;
   orderIndex: number;
@@ -871,12 +871,10 @@ const MediaTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
       const formData = new FormData();
       formData.append('title', form.title);
       formData.append('description', form.description || '');
-      // O enum do banco não tem VIDEO — vídeos são identificados pelo videoUrl
-      // (o frontend público já exibe o badge/filtro VÍDEO a partir do videoUrl)
-      formData.append('type', form.type === 'VIDEO' ? 'PDF' : form.type);
+      formData.append('type', form.type); // agora inclui VIDEO de verdade no banco
       if (form.moduleId) formData.append('moduleId', form.moduleId);
-      if (form.videoUrl) formData.append('videoUrl', form.videoUrl);
-      if (selectedFile) formData.append('file', selectedFile);
+      if (form.type === 'VIDEO') formData.append('videoUrl', form.videoUrl);
+      else if (selectedFile) formData.append('file', selectedFile);
 
       await api.post('/media-library', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setShowForm(false);
@@ -981,15 +979,7 @@ const MediaTab: React.FC<{ themeColor: string }> = ({ themeColor }) => {
                     : form.type === 'AUDIO'
                     ? 'Envie um arquivo de áudio (MP3, WAV, OGG — até 20MB).'
                     : 'Envie uma imagem (JPG, PNG, WEBP, GIF — até 20MB).'}
-                  {' '}Ou informe uma URL de vídeo externa no campo abaixo.
                 </p>
-                <div className="mt-2">
-                  <Input
-                    placeholder="URL de vídeo externo (YouTube/Vimeo) — opcional"
-                    value={form.videoUrl}
-                    onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
-                  />
-                </div>
               </div>
             )}
 

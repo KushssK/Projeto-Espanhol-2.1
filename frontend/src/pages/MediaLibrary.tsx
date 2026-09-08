@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api, assetUrl } from '../services/api';
 import { useThemeStore } from '../stores/useThemeStore';
 import { FileText, Volume2, PlayCircle, Library, Download } from 'lucide-react';
+import { mediaVideoEmbedUrl } from '../services/mediaUrl';
 
 interface MediaItem {
   id: string;
@@ -54,18 +55,7 @@ export const MediaLibrary: React.FC = () => {
     return item.type === filter && !item.videoUrl;
   });
 
-  const getYouTubeEmbedUrl = (url: string) => {
-    try {
-      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-      const match = url.match(regExp);
-      if (match && match[2].length === 11) {
-        return `https://www.youtube.com/embed/${match[2]}`;
-      }
-      return url;
-    } catch {
-      return url;
-    }
-  };
+  const getEmbedUrl = (url: string | null) => mediaVideoEmbedUrl(url);
 
   if (loading) {
     return (
@@ -144,15 +134,26 @@ export const MediaLibrary: React.FC = () => {
             <div key={item.id} className="glass rounded-[24px] border border-[var(--border-color)] overflow-hidden flex flex-col">
               {/* Mídia em destaque */}
               <div className="aspect-video bg-[var(--bg-color)] flex items-center justify-center overflow-hidden border-b border-[var(--border-color)]">
-                {item.videoUrl ? (
-                  <iframe
-                    src={getYouTubeEmbedUrl(item.videoUrl)}
-                    title={item.title}
-                    className="w-full h-full border-none"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                ) : item.type === 'IMAGE' && item.url ? (
+                {item.videoUrl ? (() => {
+                  const embed = getEmbedUrl(item.videoUrl);
+                  if (embed) {
+                    return (
+                      <iframe
+                        src={embed}
+                        title={item.title}
+                        className="w-full h-full border-none"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    );
+                  }
+                  return (
+                    <div className="flex flex-col items-center gap-2 text-center p-4">
+                      <PlayCircle size={28} style={{ color: 'var(--text-muted)' }} />
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Vídeo não suportado</p>
+                    </div>
+                  );
+                })() : item.type === 'IMAGE' && item.url ? (
                   <img src={assetUrl(item.url)} alt={item.title} className="w-full h-full object-cover" />
                 ) : item.type === 'AUDIO' ? (
                   <div className="flex flex-col items-center gap-2 text-center p-4">
